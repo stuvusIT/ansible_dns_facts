@@ -1,0 +1,26 @@
+---
+- name: Create temporary hostvars file
+  tempfile:
+    suffix: json
+  register: tempfile
+  changed_when: false
+
+- name: Write hostvars to temporary file
+  copy:
+    content: "{{ hostvars }}"
+    dest: "{{ tempfile.path }}"
+  changed_when: false
+
+- name: Generate facts
+  script: "scripts/facts.py {{ ansible_hostname }} {{ tempfile.path }}"
+  register: out
+  changed_when: false
+
+- name: Apply facts
+  set_fact:
+    pdns_auth_api_zones: "{{ out.stdout | from_json }}"
+
+- name: Remove temporary hostvars file
+  file:
+    path: tempfile.path
+    state: absent
