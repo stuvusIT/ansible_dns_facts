@@ -19,11 +19,18 @@ None
 All variables are optional.
 If you don't want to use any features, you don't need to set any variables.
 
-| Name                        | Description                                                                         |
-|-----------------------------|-------------------------------------------------------------------------------------|
-| `dns_facts_primary_servers` | Servers that should be checked for zones this server should be secondary for        |
-| `dns_facts_secondary_name`  | This host is selected as a secondary when this name is found as a NS of the primary |
+| Name                        | Description                                                                                                                                                                                             |
+|-----------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `dns_facts_primary_servers` | Servers that should be checked for zones this server should be secondary for                                                                                                                            |
+| `dns_facts_secondary_name`  | This host is selected as a secondary when this name is found as a NS of the primary                                                                                                                     |
+| `dns_facts_zone_clones`     | This is a dict that specifies which zone attributes should be copied to a new zone. During this process each apperence of the old zone name is replaced with the new zone name. More information below. |
 
+## `dns_facts_zone_clones`
+This dict 
+| Name              | Required/Default   | Description                                                                                                      |
+|-------------------|--------------------|------------------------------------------------------------------------------------------------------------------|
+| `zone`            | :heavy_check_mark: | Servers that should be checked for zones this server should be secondary for                                     |
+| `exclude_records` | `[]`               | List of records that should be excluded. If a subdomain is given every record of that subdomain will be excluded |
 
 ## Example Playbook
 
@@ -31,6 +38,9 @@ If you don't want to use any features, you don't need to set any variables.
 - hosts: dns
   roles:
   - dns-facts:
+     dns_facts_zone_clones:
+       example.com: 
+         zone: example.de
      dns_facts_primary_servers:
        - dns01
      dns_facts_secondary_name: dns02.example.com.
