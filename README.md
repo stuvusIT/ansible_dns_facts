@@ -23,13 +23,13 @@ None
 All variables are optional.
 If you don't want to use any features, you don't need to set any variables.
 
-| Name                        | Description                                                                                                                                                                                                                         |
-|-----------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `dns_facts_primary_servers` | Servers that should be checked for zones this server should be secondary for                                                                                                                                                        |
-| `dns_facts_secondary_name`  | This host is selected as a secondary when this name is found as a NS of the primary                                                                                                                                                 |
-| `dns_facts_zone_clones`     | This is a dict that specifies which zone attributes should be copied to a new zone. During this process each apperence of the old zone name is replaced with the new zone name. More information below.                             |
-| `dns_facts_prefix`          | This is a dict that contains IP address as key and a list of prefixes as value. Those prefixes will lead to new records beeing gernerated for every record that has his A Record set to the key IP address. More information below. |
-| `dns_facts_internal_records`     | This is a dict that specifies settings for generating internal records from your ansible inventory. More information below. |
+| Name                         | Description                                                                                                                                                                                                                         |
+|------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `dns_facts_primary_servers`  | Servers that should be checked for zones this server should be secondary for                                                                                                                                                        |
+| `dns_facts_secondary_name`   | This host is selected as a secondary when this name is found as a NS of the primary                                                                                                                                                 |
+| `dns_facts_zone_clones`      | This is a dict that specifies which zone attributes should be copied to a new zone. During this process each apperence of the old zone name is replaced with the new zone name. More information below.                             |
+| `dns_facts_prefix`           | This is a dict that contains IP address as key and a list of prefixes as value. Those prefixes will lead to new records beeing gernerated for every record that has his A Record set to the key IP address. More information below. |
+| `dns_facts_internal_records` | This is a dict that specifies settings for generating internal records from your ansible inventory. More information below.                                                                                                         |
 
 ## `dns_facts_zone_clones`
 
