@@ -83,6 +83,33 @@ if __name__ == "__main__":
             new_zone = removeStringFromObject(new_zone, origin['zone'] + '$', clone)
             hostvars[myHostname]['pdns_auth_api_zones'][clone] = new_zone
 
+    # WWW prefix
+
+    if 'dns_facts_prefix' in hostvars[myHostname]:
+        localhost = hostvars[myHostname]
+        hosts = localhost['dns_facts_www_prefix']
+        processed_zones = {}
+        for zone in localhost['pdns_auth_api_zones']:
+            processed_zones[zone] = {"records": {}}
+            for record in localhost['pdns_auth_api_zones'][zone]['records']:
+                try:
+                    for A in localhost['pdns_auth_api_zones'][zone]['records'][record]['A']:
+                        if "c" in A:
+                            for entry in hosts:
+                                prefixes = hosts[entry]
+
+                                if entry == A['c']:
+                                    for prefix in prefixes:
+                                        record_name = prefix + '.' + record
+                                        if record_name not in localhost['pdns_auth_api_zones'][zone]['records'] \
+                                                and record[0:len(prefix)] != prefix:
+                                            processed_zones[zone]['records'][prefix + '.' + record] = {"A": [{"c": entry}]}
+                except:
+                    continue
+        for zone in processed_zones:
+            for key, value in processed_zones[zone]['records'].items():
+                localhost['pdns_auth_api_zones'][zone]['records'][key] = value
+
     # Secondaries
     if 'dns_facts_primary_servers' in hostvars[myHostname] and 'dns_facts_secondary_name' in hostvars[myHostname]:
         for hostname in hostvars[myHostname]['dns_facts_primary_servers']:
@@ -98,6 +125,5 @@ if __name__ == "__main__":
                                 'masters': [hostvars[hostname]['ansible_host']]
                             })
                             break
-
-   print(json.dumps(ret))
+    print(json.dumps(ret))
 
