@@ -10,6 +10,10 @@ When this role is applied to a server that should be secondary to another server
 Each zone of the primary server is checked whether this server is found in the NS records of the zone, and if so, the Slave zone is created.
 The name that is searched in the zone can be set, as well as the hosts which should be checked for Master (or Native) zones.
 
+### Internal records
+
+The internal records feature use the add records for every host in the inventory using the `inventory_name` as hostname and the `ansible_host` attribute for the ip address
+
 ## Requirements
 
 None
@@ -25,6 +29,7 @@ If you don't want to use any features, you don't need to set any variables.
 | `dns_facts_secondary_name`  | This host is selected as a secondary when this name is found as a NS of the primary                                                                                                                                                 |
 | `dns_facts_zone_clones`     | This is a dict that specifies which zone attributes should be copied to a new zone. During this process each apperence of the old zone name is replaced with the new zone name. More information below.                             |
 | `dns_facts_prefix`          | This is a dict that contains IP address as key and a list of prefixes as value. Those prefixes will lead to new records beeing gernerated for every record that has his A Record set to the key IP address. More information below. |
+| `dns_facts_internal_records`     | This is a dict that specifies settings for generating internal records from your ansible inventory. More information below. |
 
 ## `dns_facts_zone_clones`
 
@@ -44,6 +49,12 @@ dns_facts_prefix:
     - www
 ```
 
+## `dns_facts_internal_records`
+
+| Name                  | Required/Default   | Description                                           |
+|-----------------------|--------------------|-------------------------------------------------------|
+| `subdomain_to_insert` | :heavy_check_mark: | Subdomain where the internal records should be added. |
+| `domain`              | :heavy_check_mark: | Domain where the internal records belong to.          |
 
 ## Example Playbook
 
@@ -60,6 +71,9 @@ dns_facts_prefix:
      dns_facts_prefix:
        1.1.1.1:
          - www
+     dns_facts_internal_records:
+       subdomain_to_insert: int
+       domain: example.de
   - pdns-auth-api-zones:
     ...
 ```
