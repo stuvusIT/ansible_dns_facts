@@ -63,6 +63,7 @@ if __name__ == "__main__":
     if 'pdns_auth_api_zones' in hostvars[myHostname]:
         ret = hostvars[myHostname]['pdns_auth_api_zones']
 
+    # Zone Clones
     if 'dns_facts_zone_clones' in hostvars[myHostname]:
         for clone, origin in hostvars[myHostname]['dns_facts_zone_clones'].items():
             origin_zone = deepcopy(hostvars[myHostname]['pdns_auth_api_zones'][origin['zone']])
@@ -83,6 +84,22 @@ if __name__ == "__main__":
             new_zone = removeStringFromObject(new_zone, origin['zone'] + '$', clone)
             hostvars[myHostname]['pdns_auth_api_zones'][clone] = new_zone
 
+    # Internal Records generation
+    if 'dns_facts_internal_records' in hostvars[myHostname]:
+        localhost = hostvars[myHostname]
+        subdomain = localhost['dns_facts_internal_records']['subdomain_to_insert']
+        domain = localhost['dns_facts_internal_records']['domain_append']
+        if 'pdns_auth_api_zones' in localhost and \
+                domain in localhost['pdns_auth_api_zones'] and \
+                localhost['pdns_auth_api_zones'][domain]['kind'] in\
+                ['Master', 'Native']:
+                    records = localhost['pdns_auth_api_zones'][domain]['records']
+                    #print(records)
+                    for host in hostvars:
+                        record_name = hostvars[host]['inventory_hostname'] + subdomain + domain
+                        if record_name not in records:
+                            records[record_name] = {"A": [{"c": hostvars[host]['ansible_host']}]}
+
     # Secondaries
     if 'dns_facts_primary_servers' in hostvars[myHostname] and 'dns_facts_secondary_name' in hostvars[myHostname]:
         for hostname in hostvars[myHostname]['dns_facts_primary_servers']:
@@ -99,5 +116,5 @@ if __name__ == "__main__":
                             })
                             break
 
-   print(json.dumps(ret))
+    print(json.dumps(ret))
 
