@@ -1,4 +1,10 @@
 ---
+#- name: Collect sshfp for dns records
+#  include_tasks: sshfp_records.yml
+#  with_items: "{{ groups['all'] }}"
+#  when: dns_facts_internal_records is defined
+
+
 - name: Create temporary hostvars file
   tempfile:
     suffix: json
@@ -20,7 +26,25 @@
   set_fact:
     pdns_auth_api_zones: "{{ out.stdout | from_json }}"
 
+- name: Create temporary hostvars file
+  tempfile:
+    suffix: json
+  register: debug
+  changed_when: false
+
+- name: Write hostvars to temporary file
+  copy:
+    content: "{{ hostvars }}"
+    dest: "{{ debug.path }}"
+  changed_when: false
+
+- name: Fetch facts
+  fetch:
+    src: "{{ debug.path }}"
+    dest: "/tmp/facts.json"
+    flat: yes
+
 - name: Remove temporary hostvars file
   file:
-    path: tempfile.path
+    path: "{{ tempfile.path }}"
     state: absent
