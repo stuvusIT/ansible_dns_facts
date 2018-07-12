@@ -1,0 +1,22 @@
+---
+- name: Create folder if it does not exist
+  file:
+    state: directory
+    path: /tmp/sshfp_records
+
+- name: Check if sshfp record is present
+  stat:
+    path: "/tmp/sshfp_records/{{ item }}"
+  register: record_present
+
+- name: Get records if not present
+  shell: ssh-keygen -r "{{ item }}.{{ dns_facts_internal_records['subdomain_to_insert'] }}.{{ dns_facts_internal_records['domain_append'] }}"
+  register: record_stdout
+  delegate_to: "{{ item }}"
+  when: not record_present.stat.exists
+
+- name: Write to file
+  copy:
+    content: "{{ record_stdout.stdout }}"
+    dest: "/tmp/sshfp_records/{{ item }}"
+  when: not record_present.stat.exists

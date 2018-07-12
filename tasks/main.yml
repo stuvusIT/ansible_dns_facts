@@ -1,8 +1,8 @@
 ---
-#- name: Collect sshfp for dns records
-#  include_tasks: sshfp_records.yml
-#  with_items: "{{ groups['all'] }}"
-#  when: dns_facts_internal_records is defined
+- name: Collect sshfp for dns records
+  include_tasks: sshfp_records.yml
+  with_items: "{{ groups['all'] }}"
+  when: dns_facts_generate_sshfp
 
 
 - name: Create temporary hostvars file

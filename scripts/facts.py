@@ -8,6 +8,14 @@ from copy import deepcopy
 from sys import argv
 
 def process_sshfp_records(path, filename, subdomain, domain):
+    '''
+    Converts bind records read from a file to records fitting to the role
+
+    :param str path: The path to the folder containg the file
+    :param str filename: filename of the file
+    :param str subdomain: subdomain to append
+    :param str domain: domain to append
+    '''
     with open("{}/{}".format(path, filename), 'r') as fp:
         lines = fp.readlines()
         sshfp_records = []
@@ -36,7 +44,6 @@ def bindGenerate(record_type, start, stop, lhs, rhs, step=1):
     for i in range(start, stop + 1, step):
         lhs = lhs.replace("$", i)
         rhs = rhs.replace("$", i)
-        #records_bind_format.append("{lhs} {record_type} {rhs}".format(lhs=lhs,record_type=record_type, rhs=rhs))
         records.append({ "c": rhs})
     return records
 
@@ -99,8 +106,7 @@ if __name__ == "__main__":
     if 'pdns_auth_api_zones' in hostvars[myHostname]:
         ret = hostvars[myHostname]['pdns_auth_api_zones']
 
-# WWW prefix
-
+# Prefixes
     if 'dns_facts_prefix' in hostvars[myHostname]:
         localhost = hostvars[myHostname]
         hosts = localhost['dns_facts_prefix']
@@ -114,7 +120,6 @@ if __name__ == "__main__":
                             if "c" in A:
                                 for entry in hosts:
                                     prefixes = hosts[entry]
-
                                     if entry == A['c']:
                                         for prefix in prefixes:
                                             record_name = prefix + '.' + record
@@ -133,9 +138,10 @@ if __name__ == "__main__":
         subdomain = localhost['dns_facts_internal_records']['subdomain_to_insert']
         domain = localhost['dns_facts_internal_records']['domain_append']
         sshfp_records = {}
-        path_to_records = "/tmp/sshfp_records"
-        for filename in os.listdir(path_to_records):
-            sshfp_records.update(process_sshfp_records(path_to_records, filename, subdomain, domain))
+        if 'dns_facts_generate_sshfp' in localhost and localhost['dns_facts_generate_sshfp']:
+            path_to_records = "/tmp/sshfp_records"
+            for filename in os.listdir(path_to_records):
+                sshfp_records.update(process_sshfp_records(path_to_records, filename, subdomain, domain))
         if 'pdns_auth_api_zones' in localhost and \
                 domain in localhost['pdns_auth_api_zones'] and \
                 localhost['pdns_auth_api_zones'][domain]['kind'] in\
@@ -150,13 +156,13 @@ if __name__ == "__main__":
 
     # Reading values from hostvars
     if 'pdns_auth_api_zones' in hostvars[myHostname] and 'dns_facts_forward_records' in hostvars[myHostname]:
-        for attr_item in hostvars[myHostname]['dns_facts_forward_records']['attrs']:
-            attr = hostvars[myHostname]['dns_facts_forward_records']['attrs'][attr_item]['name']
-            if 'ip' in hostvars[myHostname]['dns_facts_forward_records']['attrs'][attr_item]:
-                ip = hostvars[myHostname]['dns_facts_forward_records']['attrs'][attr_item]['ip']
+        for attr_item in hostvars[myHostname]['dns_facts_forward_records']:
+            attr = hostvars[myHostname]['dns_facts_forward_records'][attr_item]['name']
+            if 'ip' in hostvars[myHostname]['dns_facts_forward_records'][attr_item]:
+                ip = hostvars[myHostname]['dns_facts_forward_records'][attr_item]['ip']
             else:
                 ip = hostvars[host]['ansible_host']
-            suffixes = hostvars[myHostname]['dns_facts_forward_records']['suffix']
+            suffixes = hostvars[myHostname]['dns_facts_forward_records'][attr_item]['suffix']
             for zone in ret:
                 if ret[zone]['kind'] in ['Master', 'Native'] and zone in suffixes:
                     for host in hostvars:
@@ -164,6 +170,7 @@ if __name__ == "__main__":
                             for record in attr:
                                 if not record.endswith("."):
                                     ret[zone]['records'][record+"."+zone] = {"A": [{"c": ip}]}
+
     # Generate statments
     if 'pdns_auth_api_zones' in hostvars[myHostname]:
         for zone in ret:
@@ -217,7 +224,7 @@ if __name__ == "__main__":
             ret[clone] = new_zone
 
 
-    # DNS Templates
+    # Remove DNS Templates
     if 'pdns_auth_api_zones' in hostvars[myHostname]:
         to_remove = []
         for zone in ret:
