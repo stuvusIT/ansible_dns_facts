@@ -186,6 +186,41 @@ if __name__ == "__main__":
                             records_to_add += bind_generate(record_type, start, stop, record, rhs)
                     ret[zone]['records'][record][record_type] += records_to_add
 
+    # Zone Clones
+    if 'dns_facts_zone_clones' in hostvars[myHostname]:
+        for clone, origin in hostvars[myHostname]['dns_facts_zone_clones'].items():
+            origin_zone = deepcopy(ret[origin['zone']])
+            if 'exclude_records' in origin:
+                records_to_exclude = []
+                for exclude_record in origin['exclude_records']:
+                    for record in origin_zone['records'].keys():
+                        if exclude_record in record:
+                            records_to_exclude.append(record)
+                for record in records_to_exclude:
+                    del(origin_zone['records'][record])
+            # Check if clone is already defined
+            if clone not in ret:
+                clone_zone = {}
+            else:
+                clone_zone = ret[clone]
+            origin_zone = removeStringFromObject(origin_zone, origin['zone'] + '$', clone)
+            new_zone = mergeDict(origin_zone, clone_zone)
+            # Clone additional data
+            for key in origin_zone.keys():
+                if key not in [ 'records' ] + list(clone_zone.keys()):
+                    new_zone[key] = origin_zone[key]
+            # Set kind
+            if 'kind' in new_zone:
+                if new_zone['kind'] == 'Master-Template':
+                    new_zone['kind'] = 'Master'
+                elif new_zone['kind'] == 'Slave-Template':
+                    new_zone['kind'] = 'Slave'
+                else:
+                    new_zone['kind'] = 'Native'
+            else:
+                new_zone['kind'] = 'Master'
+            ret[clone] = new_zone
+
     # Reverse records
     if 'dns_facts_reverse_suffix' in hostvars[myHostname]:
         internal_zone = hostvars[myHostname]['dns_facts_reverse_suffix']
@@ -212,34 +247,11 @@ if __name__ == "__main__":
                 if reverse not in target_zone['records']:
                     target_zone['records'][reverse] = { "PTR": [ {"c": "{}.{}".format(host, internal_zone)} ] }
 
-    # Zone Clones
-    if 'dns_facts_zone_clones' in hostvars[myHostname]:
-        for clone, origin in hostvars[myHostname]['dns_facts_zone_clones'].items():
-            origin_zone = deepcopy(ret[origin['zone']])
-            if 'exclude_records' in origin:
-                records_to_exclude = []
-                for exclude_record in origin['exclude_records']:
-                    for record in origin_zone['records'].keys():
-                        if exclude_record in record:
-                            records_to_exclude.append(record)
-                for record in records_to_exclude:
-                    del(origin_zone['records'][record])
-            # Check if clone is already defined
-            if clone not in ret:
-                clone_zone = {}
-            else:
-                clone_zone = ret[clone]
-            origin_zone = removeStringFromObject(origin_zone, origin['zone'] + '$', clone)
-            new_zone = mergeDict(origin_zone, clone_zone)
-            new_zone['kind'] = 'Master'
-            ret[clone] = new_zone
-
-
     # Remove DNS Templates
     if 'pdns_auth_api_zones' in hostvars[myHostname]:
         to_remove = []
         for name,zone in ret.items():
-            if 'kind' in zone and zone['kind'] == 'Template':
+            if 'kind' in zone and zone['kind'] in [ 'Master-Template', 'Slave-Template', 'Native-Template' ]:
                 to_remove.append(name)
         for entry in to_remove:
             ret.pop(entry, None)

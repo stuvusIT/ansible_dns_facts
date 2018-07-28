@@ -59,7 +59,8 @@ There is one variable that contains a default value. Its listed below and is onl
 | `zone`            | :heavy_check_mark: | Servers that should be checked for zones this server should be secondary for                                     |
 | `exclude_records` | `[]`               | List of records that should be excluded. If a subdomain is given every record of that subdomain will be excluded |
 
-If a zone record `kind` is set to `Template` it will be removed during generation to allow definig template to clone.
+All extra values (such as `dnssec`, or `soaEdit`) is copied, too.
+If `kind` is set to `Master-Template`, `Slave-Template`, or `Native-Template`, the kind of the new zone is set accordingly and the source zone is removed during generation to allow definig template to clone.
 
 ## `dns_facts_prefix`
 
