@@ -65,7 +65,7 @@ def mergeDict(a, b):
     for key in b:
         if key in a:
             if isinstance(a[key], dict) and isinstance(b[key], dict):
-                mergeDict(a[key], b[key])
+                a[key] = mergeDict(a[key], b[key])
             elif isinstance(a[key], list) and isinstance(b[key], list):
                 a[key] = a[key] + b[key]
             else:
@@ -218,8 +218,8 @@ if __name__ == "__main__":
                 clone_zone = {}
             else:
                 clone_zone = ret[clone]
+            origin_zone = removeStringFromObject(origin_zone, origin['zone'] + '$', clone)
             new_zone = mergeDict(origin_zone, clone_zone)
-            new_zone = removeStringFromObject(new_zone, origin['zone'] + '$', clone)
             new_zone['kind'] = 'Master'
             ret[clone] = new_zone
 
