@@ -220,7 +220,7 @@ if __name__ == "__main__":
                 clone_zone = ret[clone]
             new_zone = mergeDict(origin_zone, clone_zone)
             new_zone = removeStringFromObject(new_zone, origin['zone'] + '$', clone)
-            new_zone['kind'] = ['Master']
+            new_zone['kind'] = 'Master'
             ret[clone] = new_zone
 
 
