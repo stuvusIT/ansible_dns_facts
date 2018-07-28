@@ -24,7 +24,8 @@ The syntax is equal to the documented bind syntax but lhs and record_type are ig
 
 ### Reverse records
 
-Forward records are used to extract record generation from host vars
+Reverse records are automatically generated from `ansible_host` addresses and [network_management](https://github.com/stuvusIT/network_management) compatible IPs and bridges.
+The reverse zones must exist with proper SOA and NS records.
 
 ## Requirements
 
@@ -42,8 +43,8 @@ If you don't want to use any features, you don't need to set any variables.
 | `dns_facts_zone_clones`      | This is a dict that specifies which zone attributes should be copied to a new zone. During this process each apperence of the old zone name is replaced with the new zone name. More information below.                             |
 | `dns_facts_prefix`           | This is a dict that contains IP address as key and a list of prefixes as value. Those prefixes will lead to new records beeing gernerated for every record that has his A Record set to the key IP address. More information below. |
 | `dns_facts_internal_records` | This is a dict that specifies settings for generating internal records from your ansible inventory. More information below.                                                                                                         |
-| `dns_facts_forward_records` | This is a dict that specifies settings for generating forward records from your ansible inventory. More information below.                                                                                                         |
-| `dns_facts_reverse_records` | This is a dict that specifies settings for generating reverse records from your ansible inventory. More information below.                                                                                                         |
+| `dns_facts_forward_records`  | This is a dict that specifies settings for generating forward records from your ansible inventory. More information below.                                                                                                          |
+| `dns_facts_reverse_suffix`   | Suffix to append to all reverse record PTR values.                                                                                                                                                                                  |
 
 There is one variable that contains a default value. Its listed below and is only effective when `dns_facts_internal_records` is in use.
 
@@ -86,23 +87,6 @@ dns_facts_prefix:
 | `ip`     | `{{ ansible_host }}` | Value of the ip address to set the record to.                  |
 | `suffix` | :heavy_check_mark:   | List of domains where the record should be inserted            |
 
-## `dns_facts_reverse_records`
-
-| Name           | Required/Default   | Description                                                           |
-|----------------|--------------------|-----------------------------------------------------------------------|
-| `zone`         | :heavy_check_mark: | Which zone should be used in the reverse zone. The zone hast to exist |
-| `default_zone` | See below          | The default values to be used to generate a new zone.                 |
-
-default for `default_zone`
-```yml
-{
-kind: Master
-soaEdit: INCEPTION-INCREMENT
-defaultTTL: 3600
-records: {}
-}
-```
-
 ## Example Playbook
 
 ```yml
@@ -121,6 +105,7 @@ records: {}
      dns_facts_internal_records:
        subdomain_to_insert: int
        domain: example.de
+     dns_facts_reverse_suffix: int.example.com.
   - pdns-auth-api-zones:
     ...
 ```

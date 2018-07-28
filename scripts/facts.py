@@ -187,19 +187,30 @@ if __name__ == "__main__":
                     ret[zone]['records'][record][record_type] += records_to_add
 
     # Reverse records
-    if 'dns_facts_reverse_records' in hostvars[myHostname]:
-        internal_zone = hostvars[myHostname]['dns_facts_reverse_records']['zone']
-        default_reverse_zone = hostvars[myHostname]['dns_facts_reverse_records']['default_zone']
-        reverse_records = {}
+    if 'dns_facts_reverse_suffix' in hostvars[myHostname]:
+        internal_zone = hostvars[myHostname]['dns_facts_reverse_suffix']
         for host in hostvars:
-            host_ip = ipaddress.IPv4Address(hostvars[host]['ansible_host'])
-            host_ip_reverse = host_ip.reverse_pointer
-            network_reverse = ".".join(str(host_ip.reverse_pointer).split(".")[1:])
-            tmp_zone = deepcopy(default_reverse_zone)
-            if network_reverse not in reverse_records:
-                reverse_records[network_reverse] = tmp_zone
-            reverse_records[network_reverse]['records'][host_ip_reverse] = { "CNAME": [ {"c": "{}.{}".format(hostvars[host]['inventory_hostname'], internal_zone)} ] }
-        ret.update(reverse_records)
+            # Collect IPs from host
+            ips = [ hostvars[host]['ansible_host'] ]
+            for var in [ 'interfaces', 'bridges' ]:
+                if var in hostvars[host]:
+                    for interface in hostvars[host][var]:
+                        if 'ip' in interface:
+                            ips += [ interface['ip'].split('/')[0] ]
+            ips = list(set(ips))
+            # Add records
+            for raw_ip in ips:
+                ip = ipaddress.IPv4Address(raw_ip)
+                reverse = ip.reverse_pointer
+                network_reverse = ".".join(str(reverse).split(".")[1:])
+                # Unknown reverse zone?
+                if network_reverse not in ret:
+                    continue
+                target_zone = ret[network_reverse]
+                if 'records' not in target_zone:
+                    target_zone['records'] = {};
+                if reverse not in target_zone['records']:
+                    target_zone['records'][reverse] = { "PTR": [ {"c": "{}.{}".format(host, internal_zone)} ] }
 
     # Zone Clones
     if 'dns_facts_zone_clones' in hostvars[myHostname]:
