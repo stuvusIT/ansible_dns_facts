@@ -83,6 +83,67 @@ if __name__ == "__main__":
     if 'pdns_auth_api_zones' in hostvars[myHostname]:
         ret = hostvars[myHostname]['pdns_auth_api_zones']
 
+    # Zone Clones
+    if 'dns_facts_zone_clones' in hostvars[myHostname]:
+        for clone, origin in hostvars[myHostname]['dns_facts_zone_clones'].items():
+            origin_zone = deepcopy(ret[origin['zone']])
+            if 'exclude_records' in origin:
+                records_to_exclude = []
+                for exclude_record in origin['exclude_records']:
+                    for record in origin_zone['records'].keys():
+                        if exclude_record in record:
+                            records_to_exclude.append(record)
+                for record in records_to_exclude:
+                    del(origin_zone['records'][record])
+            # Check if clone is already defined
+            if clone not in ret:
+                clone_zone = {}
+            else:
+                clone_zone = ret[clone]
+            origin_zone = removeStringFromObject(origin_zone, origin['zone'] + '$', clone)
+            new_zone = mergeDict(origin_zone, clone_zone)
+            # Clone additional data
+            for key in origin_zone.keys():
+                if key not in [ 'records' ] + list(clone_zone.keys()):
+                    new_zone[key] = origin_zone[key]
+            # Set kind
+            if 'kind' in new_zone:
+                if new_zone['kind'] == 'Master-Template':
+                    new_zone['kind'] = 'Master'
+                elif new_zone['kind'] == 'Slave-Template':
+                    new_zone['kind'] = 'Slave'
+                else:
+                    new_zone['kind'] = 'Native'
+            else:
+                new_zone['kind'] = 'Master'
+            ret[clone] = new_zone
+
+    # Remove DNS Templates
+    if 'pdns_auth_api_zones' in hostvars[myHostname]:
+        to_remove = []
+        for name,zone in ret.items():
+            if 'kind' in zone and zone['kind'] in [ 'Master-Template', 'Slave-Template', 'Native-Template' ]:
+                to_remove.append(name)
+        for entry in to_remove:
+            ret.pop(entry, None)
+
+    # Values from hostvars
+    if 'pdns_auth_api_zones' in hostvars[myHostname] and 'dns_facts_forward_records' in hostvars[myHostname]:
+        for attr_item in hostvars[myHostname]['dns_facts_forward_records']:
+            attr = hostvars[myHostname]['dns_facts_forward_records'][attr_item]['name']
+            if 'ip' in hostvars[myHostname]['dns_facts_forward_records'][attr_item]:
+                ip = hostvars[myHostname]['dns_facts_forward_records'][attr_item]['ip']
+            else:
+                ip = hostvars[host]['ansible_host']
+            suffixes = hostvars[myHostname]['dns_facts_forward_records'][attr_item]['suffix']
+            for zone in ret:
+                if ret[zone]['kind'] in ['Master', 'Native'] and zone in suffixes:
+                    for host in hostvars:
+                        if attr in hostvars[host]:
+                            for record in attr:
+                                if not record.endswith("."):
+                                    ret[zone]['records'][record+"."+zone] = {"A": [{"c": ip}]}
+
     # Prefixes
     if 'dns_facts_prefix' in hostvars[myHostname]:
         localhost = hostvars[myHostname]
@@ -131,58 +192,6 @@ if __name__ == "__main__":
                             if record_name in sshfp_records:
                                 records[record_name].update(sshfp_records[record_name])
 
-    # Values from hostvars
-    if 'pdns_auth_api_zones' in hostvars[myHostname] and 'dns_facts_forward_records' in hostvars[myHostname]:
-        for attr_item in hostvars[myHostname]['dns_facts_forward_records']:
-            attr = hostvars[myHostname]['dns_facts_forward_records'][attr_item]['name']
-            if 'ip' in hostvars[myHostname]['dns_facts_forward_records'][attr_item]:
-                ip = hostvars[myHostname]['dns_facts_forward_records'][attr_item]['ip']
-            else:
-                ip = hostvars[host]['ansible_host']
-            suffixes = hostvars[myHostname]['dns_facts_forward_records'][attr_item]['suffix']
-            for zone in ret:
-                if ret[zone]['kind'] in ['Master', 'Native'] and zone in suffixes:
-                    for host in hostvars:
-                        if attr in hostvars[host]:
-                            for record in attr:
-                                if not record.endswith("."):
-                                    ret[zone]['records'][record+"."+zone] = {"A": [{"c": ip}]}
-
-    # Zone Clones
-    if 'dns_facts_zone_clones' in hostvars[myHostname]:
-        for clone, origin in hostvars[myHostname]['dns_facts_zone_clones'].items():
-            origin_zone = deepcopy(ret[origin['zone']])
-            if 'exclude_records' in origin:
-                records_to_exclude = []
-                for exclude_record in origin['exclude_records']:
-                    for record in origin_zone['records'].keys():
-                        if exclude_record in record:
-                            records_to_exclude.append(record)
-                for record in records_to_exclude:
-                    del(origin_zone['records'][record])
-            # Check if clone is already defined
-            if clone not in ret:
-                clone_zone = {}
-            else:
-                clone_zone = ret[clone]
-            origin_zone = removeStringFromObject(origin_zone, origin['zone'] + '$', clone)
-            new_zone = mergeDict(origin_zone, clone_zone)
-            # Clone additional data
-            for key in origin_zone.keys():
-                if key not in [ 'records' ] + list(clone_zone.keys()):
-                    new_zone[key] = origin_zone[key]
-            # Set kind
-            if 'kind' in new_zone:
-                if new_zone['kind'] == 'Master-Template':
-                    new_zone['kind'] = 'Master'
-                elif new_zone['kind'] == 'Slave-Template':
-                    new_zone['kind'] = 'Slave'
-                else:
-                    new_zone['kind'] = 'Native'
-            else:
-                new_zone['kind'] = 'Master'
-            ret[clone] = new_zone
-
     # Generate statments
     if 'dns_facts_generate' in hostvars[myHostname]:
         for zonename,zonecontents in hostvars[myHostname]['dns_facts_generate'].items():
@@ -223,15 +232,6 @@ if __name__ == "__main__":
                     target_zone['records'] = {};
                 if reverse not in target_zone['records']:
                     target_zone['records'][reverse] = { "PTR": [ {"c": "{}.{}".format(host, internal_zone)} ] }
-
-    # Remove DNS Templates
-    if 'pdns_auth_api_zones' in hostvars[myHostname]:
-        to_remove = []
-        for name,zone in ret.items():
-            if 'kind' in zone and zone['kind'] in [ 'Master-Template', 'Slave-Template', 'Native-Template' ]:
-                to_remove.append(name)
-        for entry in to_remove:
-            ret.pop(entry, None)
 
     # Secondaries
     if 'dns_facts_primary_servers' in hostvars[myHostname] and 'dns_facts_secondary_name' in hostvars[myHostname]:
