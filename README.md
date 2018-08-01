@@ -18,10 +18,6 @@ The internal records feature use the add records for every host in the inventory
 
 Forward records are used to extract record generation from host vars
 
-### Generate statments
-This role supports generation statments like bind. The keyword is $GENERATE which is expanded everytime its encounterd.
-The syntax is equal to the documented bind syntax but lhs and record_type are ignored since they are already known when a $GENERATE statment is encountered.
-
 ### Reverse records
 
 Reverse records are automatically generated from `ansible_host` addresses and [network_management](https://github.com/stuvusIT/network_management) compatible IPs and bridges.
@@ -45,6 +41,7 @@ If you don't want to use any features, you don't need to set any variables.
 | `dns_facts_internal_records` | This is a dict that specifies settings for generating internal records from your ansible inventory. More information below.                                                                                                         |
 | `dns_facts_forward_records`  | This is a dict that specifies settings for generating forward records from your ansible inventory. More information below.                                                                                                          |
 | `dns_facts_reverse_suffix`   | Suffix to append to all reverse record PTR values.                                                                                                                                                                                  |
+| `dns_facts_generate`         | Dict that specifies bind-like `$GENERATE` instructions. See below                                                                                                                                                                   |
 
 There is one variable that contains a default value. Its listed below and is only effective when `dns_facts_internal_records` is in use.
 
@@ -88,6 +85,13 @@ dns_facts_prefix:
 | `ip`     | `{{ ansible_host }}` | Value of the ip address to set the record to.                  |
 | `suffix` | :heavy_check_mark:   | List of domains where the record should be inserted            |
 
+## `dns_facts_generate`
+
+`dns_facts_generate` is a dict where the key is the name of the zone (which has to exist prior to record generation), and the value is another dict.
+This nested dict has the range as key (e.g. `0-63` or `5-22`) and `pdns_auth_api_zones`-like contents (beginning with the type).
+That means the content of the dict begins with e.g. `CNAME` and has `c` and `t` children.
+`$` in `c` is replaced by the current number.
+
 ## Example Playbook
 
 ```yml
@@ -107,6 +111,12 @@ dns_facts_prefix:
        subdomain_to_insert: int
        domain: example.de
      dns_facts_reverse_suffix: int.example.com.
+     dns_facts_generate:
+       0.168.192.in-addr.arpa:
+         0-63:
+           CNAME:
+             - c: $.0-63.0.168.192.in-addr.arpa.
+
   - pdns-auth-api-zones:
     ...
 ```

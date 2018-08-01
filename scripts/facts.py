@@ -26,28 +26,6 @@ def process_sshfp_records(path, filename, subdomain, domain):
     records = {"{}.{}.{}".format(filename, subdomain, domain):  {"SSHFP": sshfp_records}}
     return records
 
-def bindGenerate(record_type, start, stop, lhs, rhs, step=1):
-    '''
-    Generates records for hostvars.
-    See http://www.zytrax.com/books/dns/ch8/generate.html for a explenation
-    This function does not support ttl or formating.
-
-    :param str record_type: The record type to for the generated records
-    :param int start: Start of the range that should be generated
-    :param int stop: Stop of the range that should be generated. Causion should be used since this range includes the stop value instead of the python default of excluding it.
-    :param str lhs: The left side of the record where $ in the string will be replaced by the current iteration number
-    :param str rhs: The right side of the record where $ in the string will be replaced by the current iteration number
-    :param int step: Step size for the range, default is 1
-    '''
-    records_bind_format = []
-    records= []
-    for i in range(start, stop + 1, step):
-        lhs = lhs.replace("$", i)
-        rhs = rhs.replace("$", i)
-        records.append({ "c": rhs})
-    return records
-
-
 def mergeDict(a, b):
     '''
     Merges two dicts.
@@ -98,7 +76,6 @@ def removeStringFromObject(obj, string_to_search, replace_string):
         return obj
     return obj
 
-
 if __name__ == "__main__":
     myHostname = argv[1]
     hostvars = json.loads(open(argv[2]).read())
@@ -106,7 +83,7 @@ if __name__ == "__main__":
     if 'pdns_auth_api_zones' in hostvars[myHostname]:
         ret = hostvars[myHostname]['pdns_auth_api_zones']
 
-# Prefixes
+    # Prefixes
     if 'dns_facts_prefix' in hostvars[myHostname]:
         localhost = hostvars[myHostname]
         hosts = localhost['dns_facts_prefix']
@@ -154,7 +131,7 @@ if __name__ == "__main__":
                             if record_name in sshfp_records:
                                 records[record_name].update(sshfp_records[record_name])
 
-    # Reading values from hostvars
+    # Values from hostvars
     if 'pdns_auth_api_zones' in hostvars[myHostname] and 'dns_facts_forward_records' in hostvars[myHostname]:
         for attr_item in hostvars[myHostname]['dns_facts_forward_records']:
             attr = hostvars[myHostname]['dns_facts_forward_records'][attr_item]['name']
@@ -170,21 +147,6 @@ if __name__ == "__main__":
                             for record in attr:
                                 if not record.endswith("."):
                                     ret[zone]['records'][record+"."+zone] = {"A": [{"c": ip}]}
-
-    # Generate statments
-    if 'pdns_auth_api_zones' in hostvars[myHostname]:
-        for zone in ret:
-            if 'records' not in ret[zone]:
-                continue
-            for record in ret[zone]['records']:
-                for record_type in ret[zone]['records'][record]:
-                    records_to_add = []
-                    for entry in ret[zone]['records'][record][record_type]:
-                        if "$GENERATE" in entry['c']:
-                            start_stop, lhs, record_type_gen, rhs = entry['c'].split(" ")
-                            start, stop = start_stop.split("-")
-                            records_to_add += bind_generate(record_type, start, stop, record, rhs)
-                    ret[zone]['records'][record][record_type] += records_to_add
 
     # Zone Clones
     if 'dns_facts_zone_clones' in hostvars[myHostname]:
@@ -220,6 +182,21 @@ if __name__ == "__main__":
             else:
                 new_zone['kind'] = 'Master'
             ret[clone] = new_zone
+
+    # Generate statments
+    if 'dns_facts_generate' in hostvars[myHostname]:
+        for zonename,zonecontents in hostvars[myHostname]['dns_facts_generate'].items():
+            if zonename not in ret:
+                continue
+            for generate,contents in zonecontents.items():
+                start,end = generate.split('-')
+                for i in range(int(start), int(end) + 1, 1):
+                    new = deepcopy(contents)
+                    for name,t in new.items():
+                        for record in t:
+                            if 'c' in record:
+                                record['c'] = record['c'].replace('$', str(i))
+                    ret[zonename]['records'][str(i) + '.' + zonename] = new
 
     # Reverse records
     if 'dns_facts_reverse_suffix' in hostvars[myHostname]:
