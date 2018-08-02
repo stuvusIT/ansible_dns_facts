@@ -7,7 +7,7 @@ import ipaddress
 from copy import deepcopy
 from sys import argv
 
-def process_sshfp_records(path, filename, subdomain, zone):
+def process_sshfp_records(path, filename, subdomain, zone, sshfp_algos, sshfp_fp_types):
     '''
     Converts bind records read from a file to records fitting to the role
 
@@ -15,6 +15,8 @@ def process_sshfp_records(path, filename, subdomain, zone):
     :param str filename: filename of the file
     :param str subdomain: subdomain to append
     :param str zone: zone to append
+    :param str[] sshfp_algos: List of allowed sshfp algorithms
+    :param str[] sshfp_fp_types: List of allowed sshfp fingerprint types
     '''
     records = {}
     try:
@@ -22,7 +24,12 @@ def process_sshfp_records(path, filename, subdomain, zone):
             lines = fp.readlines()
             sshfp_records = []
             for line in lines:
-                sshfp_records.append({"c": " ".join(line.split(" ")[3:]).strip()})
+                parts = line.split(' ')
+                if sshfp_algos != [] and int(parts[3]) not in sshfp_algos:
+                    continue
+                if sshfp_fp_types != [] and int(parts[4]) not in sshfp_fp_types:
+                    continue
+                sshfp_records.append({"c": " ".join(parts[3:]).strip()})
 
 
         if len(sshfp_records) > 0:
@@ -182,6 +189,14 @@ if __name__ == "__main__":
             subdomain = localhost['dns_facts_internal_records']['subdomain']
         else:
             subdomain = ''
+        if 'sshfp_algorithms' in localhost['dns_facts_internal_records']:
+            sshfp_algos = localhost['dns_facts_internal_records']['sshfp_algorithms']
+        else:
+            sshfp_algos = []
+        if 'sshfp_fp_types' in localhost['dns_facts_internal_records']:
+            sshfp_fp_types = localhost['dns_facts_internal_records']['sshfp_fp_types']
+        else:
+            sshfp_fp_types = []
         generateSshfp = 'generate_sshfp' in localhost['dns_facts_internal_records'] and localhost['dns_facts_internal_records']['generate_sshfp']
         zone = localhost['dns_facts_internal_records']['zone']
         if zone in ret and 'records' in ret[zone]:
@@ -191,7 +206,7 @@ if __name__ == "__main__":
                 if record_name not in records:
                     records[record_name] = {"A": [{"c": hostvars[host]['ansible_host']}]}
                     if generateSshfp:
-                        records[record_name].update(process_sshfp_records(argv[3], host, subdomain, zone))
+                        records[record_name].update(process_sshfp_records(argv[3], host, subdomain, zone, sshfp_algos, sshfp_fp_types))
 
     # Generate statments
     if 'dns_facts_generate' in localhost:

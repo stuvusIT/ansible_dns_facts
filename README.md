@@ -53,11 +53,13 @@ If you don't want to use any features, you don't need to set any variables.
 
 ## `dns_facts_zone_clones`
 
-| Name              | Required/Default   | Description                                                                                                          |
-|-------------------|--------------------|----------------------------------------------------------------------------------------------------------------------|
-| `zone`            | :heavy_check_mark: | Servers that should be checked for zones this server should be secondary for                                         |
-| `exclude_records` | `[]`               | List of records that should be excluded. If a subdomain is given every record of that subdomain will be excluded     |
-| `generate_sshfp`  | `false`            | Enable sshfp record collection for all hosts. You can change the path of the sshfp cache with `dns_facts_sshfp_path` |
+| Name               | Required/Default   | Description                                                                                                          |
+|--------------------|--------------------|----------------------------------------------------------------------------------------------------------------------|
+| `zone`             | :heavy_check_mark: | Servers that should be checked for zones this server should be secondary for                                         |
+| `exclude_records`  | `[]`               | List of records that should be excluded. If a subdomain is given every record of that subdomain will be excluded     |
+| `generate_sshfp`   | `false`            | Enable sshfp record collection for all hosts. You can change the path of the sshfp cache with `dns_facts_sshfp_path` |
+| `sshfp_algorithms` | All algorithms     | Only generate sshfp records for the given algorithms (integer notation from `ssh-keygen -r`)                         |
+| `sshfp_fp_types`   | All types          | Only generate sshfp recrods for the given fingerprint algorithms (integer notation from `ssh-keygen -r`)             |
 
 All extra values (such as `dnssec`, or `soaEdit`) is copied, too.
 If `kind` is set to `Master-Template`, `Slave-Template`, or `Native-Template`, the kind of the new zone is set accordingly and the source zone is removed during generation to allow definig template to clone.
