@@ -66,14 +66,8 @@ If `kind` is set to `Master-Template`, `Slave-Template`, or `Native-Template`, t
 
 ## `dns_facts_prefix`
 
-The best explanation for the `dns_facts_prefix` is an example.
-
-
-```yml
-dns_facts_prefix:
-  1.1.1.1:
-    - www
-```
+This options is used to generate prefixes if an A record points to a specified IP.
+This means, you can e.g. generate `www.` prefixes for all records pointing to you reverse proxy.
 
 ## `dns_facts_internal_records`
 
@@ -104,7 +98,7 @@ That means the content of the dict begins with e.g. `CNAME` and has `c` and `t` 
   roles:
   - dns-facts:
      dns_facts_zone_clones:
-       example.com: 
+       example.com:
          zone: example.de
      dns_facts_primary_servers:
        - dns01

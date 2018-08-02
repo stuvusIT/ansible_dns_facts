@@ -162,23 +162,23 @@ if __name__ == "__main__":
     if 'dns_facts_prefix' in localhost:
         hosts = localhost['dns_facts_prefix']
         processed_zones = {}
-        for zone in localhost['pdns_auth_api_zones']:
+        for zone in ret:
             processed_zones[zone] = {"records": {}}
-            if 'records' in localhost['pdns_auth_api_zones'][zone]:
-                for record in localhost['pdns_auth_api_zones'][zone]['records']:
-                    try:
-                        for A in localhost['pdns_auth_api_zones'][zone]['records'][record]['A']:
-                            if "c" in A:
-                                for entry in hosts:
-                                    prefixes = hosts[entry]
-                                    if entry == A['c']:
-                                        for prefix in prefixes:
-                                            record_name = prefix + '.' + record
-                                            if record_name not in localhost['pdns_auth_api_zones'][zone]['records'] \
-                                                    and record[0:len(prefix)] != prefix:
-                                                processed_zones[zone]['records'][prefix + '.' + record] = {"A": [{"c": entry}]}
-                    except:
+            if 'records' not in ret[zone]:
+                continue
+            for name,contents in ret[zone]['records'].items():
+                if 'A' not in contents:
+                    continue
+                for A in contents['A']:
+                    if "c" not in A:
                         continue
+                    for entryname,entrycontent in hosts.items():
+                        if entryname != A['c']:
+                            continue
+                        for prefix in entrycontent:
+                            record_name = prefix + '.' + name
+                            if record_name not in ret[zone]['records'] and name[0:len(prefix)] != prefix:
+                                processed_zones[zone]['records'][prefix + '.' + name] = {"A": [{"c": entryname}]}
         for zone in processed_zones:
             for key, value in processed_zones[zone]['records'].items():
                 localhost['pdns_auth_api_zones'][zone]['records'][key] = value
