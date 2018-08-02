@@ -85,7 +85,6 @@ def removeStringFromObject(obj, string_to_search, replace_string):
 if __name__ == "__main__":
     myHostname = argv[1]
     hostvars = json.loads(open(argv[2]).read())
-    generateSshfp = argv[3] == 'True'
     localhost = hostvars[myHostname]
     ret = {}
     if 'pdns_auth_api_zones' in hostvars[myHostname]:
@@ -183,6 +182,7 @@ if __name__ == "__main__":
             subdomain = localhost['dns_facts_internal_records']['subdomain']
         else:
             subdomain = ''
+        generateSshfp = 'generate_sshfp' in localhost['dns_facts_internal_records'] and localhost['dns_facts_internal_records']['generate_sshfp']
         zone = localhost['dns_facts_internal_records']['zone']
         if zone in ret and 'records' in ret[zone]:
             records = ret[zone]['records']
@@ -191,7 +191,7 @@ if __name__ == "__main__":
                 if record_name not in records:
                     records[record_name] = {"A": [{"c": hostvars[host]['ansible_host']}]}
                     if generateSshfp:
-                        records[record_name].update(process_sshfp_records(argv[4], host, subdomain, zone))
+                        records[record_name].update(process_sshfp_records(argv[3], host, subdomain, zone))
 
     # Generate statments
     if 'dns_facts_generate' in localhost:

@@ -1,3 +1,2 @@
 ---
-dns_facts_generate_sshfp: true
 dns_facts_sshfp_path: /tmp/sshfp_records

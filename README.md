@@ -50,18 +50,14 @@ If you don't want to use any features, you don't need to set any variables.
 | `dns_facts_reverse_suffix`   | Suffix to append to all reverse record PTR values.                                                                                                                                                                                  |
 | `dns_facts_generate`         | Dict that specifies bind-like `$GENERATE` instructions. See below                                                                                                                                                                   |
 
-There is one variable that contains a default value. Its listed below and is only effective when `dns_facts_internal_records` is in use.
-
-| Name                       | Required/Default | Description                                                                       |
-|----------------------------|------------------|-----------------------------------------------------------------------------------|
-| `dns_facts_generate_sshfp` | `false`          | Enable sshfp record collection from hosts and adding them to the internal records |
 
 ## `dns_facts_zone_clones`
 
-| Name              | Required/Default   | Description                                                                                                      |
-|-------------------|--------------------|------------------------------------------------------------------------------------------------------------------|
-| `zone`            | :heavy_check_mark: | Servers that should be checked for zones this server should be secondary for                                     |
-| `exclude_records` | `[]`               | List of records that should be excluded. If a subdomain is given every record of that subdomain will be excluded |
+| Name              | Required/Default   | Description                                                                                                          |
+|-------------------|--------------------|----------------------------------------------------------------------------------------------------------------------|
+| `zone`            | :heavy_check_mark: | Servers that should be checked for zones this server should be secondary for                                         |
+| `exclude_records` | `[]`               | List of records that should be excluded. If a subdomain is given every record of that subdomain will be excluded     |
+| `generate_sshfp`  | `false`            | Enable sshfp record collection for all hosts. You can change the path of the sshfp cache with `dns_facts_sshfp_path` |
 
 All extra values (such as `dnssec`, or `soaEdit`) is copied, too.
 If `kind` is set to `Master-Template`, `Slave-Template`, or `Native-Template`, the kind of the new zone is set accordingly and the source zone is removed during generation to allow definig template to clone.
