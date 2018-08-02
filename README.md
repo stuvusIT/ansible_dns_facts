@@ -23,6 +23,13 @@ Forward records are used to extract record generation from host vars
 Reverse records are automatically generated from `ansible_host` addresses and [network_management](https://github.com/stuvusIT/network_management) compatible IPs and bridges.
 The reverse zones must exist with proper SOA and NS records.
 
+### Internal records
+
+Records are automatically generated from the hostvars.
+We call them internal records.
+They are usually used in a subdomain where the search domain of your hosts point to.
+This gives convenience, because you can use unqualified hostnames in your internal network (hence the name).
+
 ## Requirements
 
 None
@@ -47,7 +54,7 @@ There is one variable that contains a default value. Its listed below and is onl
 
 | Name                       | Required/Default | Description                                                                       |
 |----------------------------|------------------|-----------------------------------------------------------------------------------|
-| `dns_facts_generate_sshfp` | `true`           | Enable sshfp record collection from hosts and adding them to the internal records |
+| `dns_facts_generate_sshfp` | `false`          | Enable sshfp record collection from hosts and adding them to the internal records |
 
 ## `dns_facts_zone_clones`
 
@@ -72,15 +79,15 @@ dns_facts_prefix:
 
 ## `dns_facts_internal_records`
 
-| Name                  | Required/Default   | Description                                                                       |
-|-----------------------|--------------------|-----------------------------------------------------------------------------------|
-| `subdomain_to_insert` | :heavy_check_mark: | Subdomain where the internal records should be added.                             |
-| `domain`              | :heavy_check_mark: | Domain where the internal records belong to.                                      |
+| Name        | Required/Default   | Description                                                      |
+|-------------|:------------------:|------------------------------------------------------------------|
+| `zone`      | :heavy_check_mark: | Zone where the internal records are inserted in                  |
+| `subdomain` |                    | Subdomain that is inserted between the hostname and the zonename |
 
 ## `dns_facts_forward_records`
 
 | Name     | Required/Default     | Description                                                    |
-|----------|----------------------|----------------------------------------------------------------|
+|----------|:--------------------:|----------------------------------------------------------------|
 | `name`   | :heavy_check_mark:   | Name of the top level attribute to search for in the host vars |
 | `ip`     | `{{ ansible_host }}` | Value of the ip address to set the record to.                  |
 | `suffix` | :heavy_check_mark:   | List of domains where the record should be inserted            |
@@ -108,8 +115,8 @@ That means the content of the dict begins with e.g. `CNAME` and has `c` and `t` 
        1.1.1.1:
          - www
      dns_facts_internal_records:
-       subdomain_to_insert: int
-       domain: example.de
+       subdomain: int
+       zone: example.de
      dns_facts_reverse_suffix: int.example.com.
      dns_facts_generate:
        0.168.192.in-addr.arpa:

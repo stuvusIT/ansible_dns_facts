@@ -1,0 +1,29 @@
+---
+- name: Create sshfp folder
+  file:
+    path: "{{ dns_facts_sshfp_path }}"
+    state: directory
+    owner: root
+    mode: 0755
+
+- name: Stat sshfp files
+  find:
+    paths: "{{ dns_facts_sshfp_path }}"
+  register: sshfp_files
+
+- name: Collect sshfp records
+  command:
+    ssh-keygen -r "{{ item }}"
+  delegate_to: "{{ item }}"
+  changed_when: false
+  with_items: "{{ hostvars.keys() | difference(sshfp_files.files | map(attribute='path') | map('basename') | list) }}"
+  register: records
+
+- name: Write sshfp records
+  copy:
+    dest: "{{ dns_facts_sshfp_path }}/{{ item }}"
+    content: "{{ records.results | selectattr('item', 'equalto', item) | map(attribute='stdout') | list | first }}"
+    owner: root
+    group: root
+    mode: 0644
+  with_items: "{{ records.results | map(attribute='item') | list }}"

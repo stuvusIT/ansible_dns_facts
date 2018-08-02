@@ -7,23 +7,29 @@ import ipaddress
 from copy import deepcopy
 from sys import argv
 
-def process_sshfp_records(path, filename, subdomain, domain):
+def process_sshfp_records(path, filename, subdomain, zone):
     '''
     Converts bind records read from a file to records fitting to the role
 
     :param str path: The path to the folder containg the file
     :param str filename: filename of the file
     :param str subdomain: subdomain to append
-    :param str domain: domain to append
+    :param str zone: zone to append
     '''
-    with open("{}/{}".format(path, filename), 'r') as fp:
-        lines = fp.readlines()
-        sshfp_records = []
-        for line in lines:
-            sshfp_records.append({"c": " ".join(line.split(" ")[3:])})
+    records = {}
+    try:
+        with open("{}/{}".format(path, filename), 'r') as fp:
+            lines = fp.readlines()
+            sshfp_records = []
+            for line in lines:
+                sshfp_records.append({"c": " ".join(line.split(" ")[3:]).strip()})
 
 
-    records = {"{}.{}.{}".format(filename, subdomain, domain):  {"SSHFP": sshfp_records}}
+        if len(sshfp_records) > 0:
+            records = {"SSHFP": sshfp_records}
+    except FileNotFoundError:
+        pass
+
     return records
 
 def mergeDict(a, b):
@@ -79,6 +85,7 @@ def removeStringFromObject(obj, string_to_search, replace_string):
 if __name__ == "__main__":
     myHostname = argv[1]
     hostvars = json.loads(open(argv[2]).read())
+    generateSshfp = argv[3] == 'True'
     localhost = hostvars[myHostname]
     ret = {}
     if 'pdns_auth_api_zones' in hostvars[myHostname]:
@@ -172,24 +179,19 @@ if __name__ == "__main__":
 
     # Internal Records generation
     if 'dns_facts_internal_records' in localhost:
-        subdomain = localhost['dns_facts_internal_records']['subdomain_to_insert']
-        domain = localhost['dns_facts_internal_records']['domain_append']
-        sshfp_records = {}
-        if 'dns_facts_generate_sshfp' in localhost and localhost['dns_facts_generate_sshfp']:
-            path_to_records = "/tmp/sshfp_records"
-            for filename in os.listdir(path_to_records):
-                sshfp_records.update(process_sshfp_records(path_to_records, filename, subdomain, domain))
-        if 'pdns_auth_api_zones' in localhost and \
-                domain in localhost['pdns_auth_api_zones'] and \
-                localhost['pdns_auth_api_zones'][domain]['kind'] in\
-                ['Master', 'Native']:
-                    records = localhost['pdns_auth_api_zones'][domain]['records']
-                    for host in hostvars:
-                        record_name = "{}.{}.{}".format(hostvars[host]['inventory_hostname'], subdomain, domain)
-                        if record_name not in records:
-                            records[record_name] = {"A": [{"c": hostvars[host]['ansible_host']}]}
-                            if record_name in sshfp_records:
-                                records[record_name].update(sshfp_records[record_name])
+        if 'subdomain' in localhost['dns_facts_internal_records']:
+            subdomain = localhost['dns_facts_internal_records']['subdomain']
+        else:
+            subdomain = ''
+        zone = localhost['dns_facts_internal_records']['zone']
+        if zone in ret and 'records' in ret[zone]:
+            records = ret[zone]['records']
+            for host in hostvars.keys():
+                record_name = "{}.{}.{}".format(host, subdomain, zone)
+                if record_name not in records:
+                    records[record_name] = {"A": [{"c": hostvars[host]['ansible_host']}]}
+                    if generateSshfp:
+                        records[record_name].update(process_sshfp_records(argv[4], host, subdomain, zone))
 
     # Generate statments
     if 'dns_facts_generate' in localhost:

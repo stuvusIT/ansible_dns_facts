@@ -1,7 +1,3 @@
 ---
 dns_facts_generate_sshfp: true
-dns_facts_reverse_records_default_zone: 
-  kind: Master
-  soaEdit: INCEPTION-INCREMENT
-  defaultTTL: 3600
-  records: {}
+dns_facts_sshfp_path: /tmp/sshfp_records

@@ -1,7 +1,6 @@
 ---
-- name: Collect sshfp for dns records
-  include_tasks: sshfp_records.yml
-  with_items: "{{ groups['all'] }}"
+- name: Generate sshfp records
+  include_tasks: sshfp.yml
   when: dns_facts_generate_sshfp
 
 - name: Create temporary hostvars file
@@ -17,10 +16,16 @@
   changed_when: false
 
 - name: Generate facts
-  script: "scripts/facts.py {{ ansible_hostname }} {{ tempfile.path }}"
+  script: "scripts/facts.py {{ ansible_hostname }} {{ tempfile.path }} {{ dns_facts_generate_sshfp }} {{ dns_facts_sshfp_path }}"
   register: out
   changed_when: false
 
 - name: Apply facts
   set_fact:
     pdns_auth_api_zones: "{{ out.stdout | from_json }}"
+
+- name: Remove temporary file
+  file:
+    path: "{{ tempfile.path }}"
+    state: absent
+  changed_when: false
