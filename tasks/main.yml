@@ -1,4 +1,8 @@
 ---
+- name: Generate sshfp records
+  import_tasks: sshfp.yml
+  when: "dns_facts_internal_records and 'generate_sshfp' in dns_facts_internal_records and dns_facts_internal_records['generate_sshfp']"
+
 - name: Create temporary hostvars file
   tempfile:
     suffix: json
@@ -12,7 +16,7 @@
   changed_when: false
 
 - name: Generate facts
-  script: "scripts/facts.py {{ ansible_hostname }} {{ tempfile.path }}"
+  script: "scripts/facts.py {{ ansible_hostname }} {{ tempfile.path }} {{ dns_facts_sshfp_path }}"
   register: out
   changed_when: false
 
@@ -20,7 +24,8 @@
   set_fact:
     pdns_auth_api_zones: "{{ out.stdout | from_json }}"
 
-- name: Remove temporary hostvars file
+- name: Remove temporary file
   file:
-    path: tempfile.path
+    path: "{{ tempfile.path }}"
     state: absent
+  changed_when: false
