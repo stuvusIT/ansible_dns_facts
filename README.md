@@ -18,6 +18,14 @@ The internal records feature use the add records for every host in the inventory
 
 Forward records are used to extract record generation from host vars
 
+### `reverseproxy`-compatibility
+
+This role is fully compatible with the [reverse_proxy](https://github.com/stuvusIT/reverse_proxy) and [reverse_proxy_mklist](https://github.com/stuvusIT/reverse_proxy_mklist) roles.
+This is accomplished by parsing the `served_domain` fact of all hosts.
+
+Just set `dns_facts_reverse_proxies` to a list of hosts running the the two roles and the proper A records are automatically generated into the proper zones (if they exist).
+Longer zone names are preferred over shorter ones.
+
 ### Reverse records
 
 Reverse records are automatically generated from `ansible_host` addresses and [network_management](https://github.com/stuvusIT/network_management) compatible IPs and bridges.
@@ -39,16 +47,16 @@ None
 All variables are optional.
 If you don't want to use any features, you don't need to set any variables.
 
-| Name                         | Description                                                                                                                                                                                                                         |
-|------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `dns_facts_primary_servers`  | Servers that should be checked for zones this server should be secondary for                                                                                                                                                        |
-| `dns_facts_secondary_name`   | This host is selected as a secondary when this name is found as a NS of the primary                                                                                                                                                 |
-| `dns_facts_zone_clones`      | This is a dict that specifies which zone attributes should be copied to a new zone. During this process each apperence of the old zone name is replaced with the new zone name. More information below.                             |
-| `dns_facts_prefix`           | This is a dict that contains IP address as key and a list of prefixes as value. Those prefixes will lead to new records beeing gernerated for every record that has his A Record set to the key IP address. More information below. |
-| `dns_facts_internal_records` | This is a dict that specifies settings for generating internal records from your ansible inventory. More information below.                                                                                                         |
-| `dns_facts_forward_records`  | This is a dict that specifies settings for generating forward records from your ansible inventory. More information below.                                                                                                          |
-| `dns_facts_reverse_suffix`   | Suffix to append to all reverse record PTR values.                                                                                                                                                                                  |
-| `dns_facts_generate`         | Dict that specifies bind-like `$GENERATE` instructions. See below                                                                                                                                                                   |
+| Name                         | Description                                                                                                                                                                                             |
+|------------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `dns_facts_primary_servers`  | Servers that should be checked for zones this server should be secondary for                                                                                                                            |
+| `dns_facts_secondary_name`   | This host is selected as a secondary when this name is found as a NS of the primary                                                                                                                     |
+| `dns_facts_zone_clones`      | This is a dict that specifies which zone attributes should be copied to a new zone. During this process each apperence of the old zone name is replaced with the new zone name. More information below. |
+| `dns_facts_internal_records` | This is a dict that specifies settings for generating internal records from your ansible inventory. More information below.                                                                             |
+| `dns_facts_forward_records`  | This is a dict that specifies settings for generating forward records from your ansible inventory. More information below.                                                                              |
+| `dns_facts_reverse_suffix`   | Suffix to append to all reverse record PTR values.                                                                                                                                                      |
+| `dns_facts_generate`         | Dict that specifies bind-like `$GENERATE` instructions. See below                                                                                                                                       |
+| `dns_facts_reverse_proxies`  | List of reverseproxy hosts                                                                                                                                                                              |
 
 
 ## `dns_facts_zone_clones`
@@ -64,10 +72,6 @@ If you don't want to use any features, you don't need to set any variables.
 All extra values (such as `dnssec`, or `soaEdit`) is copied, too.
 If `kind` is set to `Master-Template`, `Slave-Template`, or `Native-Template`, the kind of the new zone is set accordingly and the source zone is removed during generation to allow definig template to clone.
 
-## `dns_facts_prefix`
-
-This options is used to generate prefixes if an A record points to a specified IP.
-This means, you can e.g. generate `www.` prefixes for all records pointing to you reverse proxy.
 
 ## `dns_facts_internal_records`
 
@@ -103,9 +107,6 @@ That means the content of the dict begins with e.g. `CNAME` and has `c` and `t` 
      dns_facts_primary_servers:
        - dns01
      dns_facts_secondary_name: dns02.example.com.
-     dns_facts_prefix:
-       1.1.1.1:
-         - www
      dns_facts_internal_records:
        subdomain: int
        zone: example.de
@@ -115,6 +116,8 @@ That means the content of the dict begins with e.g. `CNAME` and has `c` and `t` 
          0-63:
            CNAME:
              - c: $.0-63.0.168.192.in-addr.arpa.
+     dns_facts_reverse_proxies:
+       - reverseproxy01
 
   - pdns-auth-api-zones:
     ...

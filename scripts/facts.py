@@ -158,30 +158,73 @@ if __name__ == "__main__":
                                 if not record.endswith("."):
                                     ret[zone]['records'][record+"."+zone] = {"A": [{"c": ip}]}
 
-    # Prefixes
-    if 'dns_facts_prefix' in localhost:
-        hosts = localhost['dns_facts_prefix']
-        processed_zones = {}
-        for zone in ret:
-            processed_zones[zone] = {"records": {}}
-            if 'records' not in ret[zone]:
-                continue
-            for name,contents in ret[zone]['records'].items():
-                if 'A' not in contents:
+    # Values from served domains
+    if 'dns_facts_reverse_proxies' in localhost:
+        new_records = {}
+        for proxy in localhost['dns_facts_reverse_proxies']:
+            prefixes = []
+            suffixes = []
+            ignoredHosts = []
+            if 'domain_prefixes' in hostvars[proxy]:
+                prefixes = hostvars[proxy]['domain_prefixes']
+            if 'domain_suffixes' in hostvars[proxy]:
+                suffixes = hostvars[proxy]['domain_suffixes']
+            if 'ignore_hosts' in hostvars[proxy]:
+                ignoredHosts = hostvars[proxy]['ignore_hosts']
+            # Iterate over hosts
+            for hostname,hostcontent in hostvars.items():
+                if hostname in ignoredHosts or 'served_domains' not in hostcontent:
                     continue
-                for A in contents['A']:
-                    if "c" not in A:
+                for domainblock in hostcontent['served_domains']:
+                    # Skip this served domain
+                    if 'reverse_proxy_skip' in domainblock and domainblock['reverse_proxy_skip']:
                         continue
-                    for entryname,entrycontent in hosts.items():
-                        if entryname != A['c']:
-                            continue
-                        for prefix in entrycontent:
-                            record_name = prefix + '.' + name
-                            if record_name not in ret[zone]['records'] and name[0:len(prefix)] != prefix:
-                                processed_zones[zone]['records'][prefix + '.' + name] = {"A": [{"c": entryname}]}
-        for zone in processed_zones:
-            for key, value in processed_zones[zone]['records'].items():
-                localhost['pdns_auth_api_zones'][zone]['records'][key] = value
+                    if 'domains' not in domainblock:
+                        continue
+                    for domainname in domainblock['domains']:
+                        if domainname.endswith('.'):
+                            new_records[domainname] = hostvars[proxy]['ansible_host']
+                        else:
+                            for prefix in prefixes:
+                                if prefix != '':
+                                    prefix += '.'
+                                for suffix in suffixes:
+                                    if suffix != '':
+                                        suffix = '.' + suffix
+                                    new_records[prefix + domainname + suffix] = hostvars[proxy]['ansible_host']
+        # Try to insert the new records
+        for name,content in new_records.items():
+            # Try to find the proper zone
+            zone = ''
+            for zonename in ret.keys():
+                # We need the zone with the longest common suffix
+                if name.endswith(zonename) and len(zonename) > len(zone):
+                    zone = zonename
+            # Nothing found :/
+            if zone == '':
+                continue
+            # Can we insert the record?
+            zone = ret[zone]
+            if 'records' not in zone:
+                zone['records'] = {
+                    name: {
+                        'A': [
+                            {
+                                'c': content
+                            }
+                        ]
+                    }
+                }
+            else:
+                if name in zone['records'] and 'A' in zone['records'][name]:
+                    continue
+                zone['records'][name] = {
+                    'A': [
+                        {
+                            'c': content
+                        }
+                    ]
+                }
 
     # Internal Records generation
     if 'dns_facts_internal_records' in localhost:
