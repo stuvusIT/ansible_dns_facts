@@ -2,9 +2,42 @@
 
 import json
 import re
+import os
+import ipaddress
 from copy import deepcopy
 from sys import argv
 
+def process_sshfp_records(path, filename, subdomain, zone, sshfp_algos, sshfp_fp_types):
+    '''
+    Converts bind records read from a file to records fitting to the role
+
+    :param str path: The path to the folder containg the file
+    :param str filename: filename of the file
+    :param str subdomain: subdomain to append
+    :param str zone: zone to append
+    :param str[] sshfp_algos: List of allowed sshfp algorithms
+    :param str[] sshfp_fp_types: List of allowed sshfp fingerprint types
+    '''
+    records = {}
+    try:
+        with open("{}/{}".format(path, filename), 'r') as fp:
+            lines = fp.readlines()
+            sshfp_records = []
+            for line in lines:
+                parts = line.split(' ')
+                if sshfp_algos != [] and int(parts[3]) not in sshfp_algos:
+                    continue
+                if sshfp_fp_types != [] and int(parts[4]) not in sshfp_fp_types:
+                    continue
+                sshfp_records.append({"c": " ".join(parts[3:]).strip()})
+
+
+        if len(sshfp_records) > 0:
+            records = {"SSHFP": sshfp_records}
+    except FileNotFoundError:
+        pass
+
+    return records
 
 def mergeDict(a, b):
     '''
@@ -23,13 +56,14 @@ def mergeDict(a, b):
     for key in b:
         if key in a:
             if isinstance(a[key], dict) and isinstance(b[key], dict):
-                mergeDict(a[key], b[key])
+                a[key] = mergeDict(a[key], b[key])
             elif isinstance(a[key], list) and isinstance(b[key], list):
                 a[key] = a[key] + b[key]
             else:
                 a[key] = b[key]
         else:
             a[key] = b[key]
+    return a
 
 
 def removeStringFromObject(obj, string_to_search, replace_string):
@@ -55,18 +89,19 @@ def removeStringFromObject(obj, string_to_search, replace_string):
         return obj
     return obj
 
-
 if __name__ == "__main__":
     myHostname = argv[1]
     hostvars = json.loads(open(argv[2]).read())
-    ret = []
-    if 'pdns_auth_api_zones' in hostvars[myHostname]:
+    sshfp_directory = argv[3]
+    localhost = hostvars[myHostname]
+    ret = {}
+    if 'pdns_auth_api_zones' in localhost:
         ret = hostvars[myHostname]['pdns_auth_api_zones']
 
     # Zone Clones
-    if 'dns_facts_zone_clones' in hostvars[myHostname]:
-        for clone, origin in hostvars[myHostname]['dns_facts_zone_clones'].items():
-            origin_zone = deepcopy(hostvars[myHostname]['pdns_auth_api_zones'][origin['zone']])
+    if 'dns_facts_zone_clones' in localhost:
+        for clone, origin in localhost['dns_facts_zone_clones'].items():
+            origin_zone = deepcopy(ret[origin['zone']])
             if 'exclude_records' in origin:
                 records_to_exclude = []
                 for exclude_record in origin['exclude_records']:
@@ -76,71 +111,202 @@ if __name__ == "__main__":
                 for record in records_to_exclude:
                     del(origin_zone['records'][record])
             # Check if clone is already defined
-            if clone not in hostvars[myHostname]['pdns_auth_api_zones']:
+            if clone not in ret:
                 clone_zone = {}
             else:
-                clone_zone = hostvars[myHostname]['pdns_auth_api_zones'][clone]
+                clone_zone = ret[clone]
+            origin_zone = removeStringFromObject(origin_zone, origin['zone'] + '$', clone)
             new_zone = mergeDict(origin_zone, clone_zone)
-            new_zone = removeStringFromObject(new_zone, origin['zone'] + '$', clone)
-            hostvars[myHostname]['pdns_auth_api_zones'][clone] = new_zone
+            # Clone additional data
+            for key in origin_zone.keys():
+                # Exclude 'records' and everything that is already set
+                if key not in [ 'records' ] + list(clone_zone.keys()):
+                    new_zone[key] = origin_zone[key]
+            # Set kind
+            if 'kind' in new_zone:
+                if new_zone['kind'] == 'Master-Template':
+                    new_zone['kind'] = 'Master'
+                elif new_zone['kind'] == 'Slave-Template':
+                    new_zone['kind'] = 'Slave'
+                else:
+                    new_zone['kind'] = 'Native'
+            else:
+                new_zone['kind'] = 'Master'
+            ret[clone] = new_zone
 
-    # WWW prefix
+    # Remove DNS Templates
+    if 'pdns_auth_api_zones' in localhost:
+        to_remove = []
+        for name,zone in ret.items():
+            if 'kind' in zone and zone['kind'] in [ 'Master-Template', 'Slave-Template', 'Native-Template' ]:
+                to_remove.append(name)
+        for entry in to_remove:
+            ret.pop(entry, None)
 
-    if 'dns_facts_prefix' in hostvars[myHostname]:
-        localhost = hostvars[myHostname]
-        hosts = localhost['dns_facts_www_prefix']
-        processed_zones = {}
-        for zone in localhost['pdns_auth_api_zones']:
-            processed_zones[zone] = {"records": {}}
-            for record in localhost['pdns_auth_api_zones'][zone]['records']:
-                try:
-                    for A in localhost['pdns_auth_api_zones'][zone]['records'][record]['A']:
-                        if "c" in A:
-                            for entry in hosts:
-                                prefixes = hosts[entry]
+    # Values from hostvars
+    if 'pdns_auth_api_zones' in localhost and 'dns_facts_forward_records' in localhost:
+        for attr_item in localhost['dns_facts_forward_records']:
+            attr = localhost['dns_facts_forward_records'][attr_item]['name']
+            if 'ip' in localhost['dns_facts_forward_records'][attr_item]:
+                ip = localhost['dns_facts_forward_records'][attr_item]['ip']
+            else:
+                ip = hostvars[host]['ansible_host']
+            suffixes = localhost['dns_facts_forward_records'][attr_item]['suffix']
+            for zone in ret:
+                if ret[zone]['kind'] in ['Master', 'Native'] and zone in suffixes:
+                    for host in hostvars:
+                        if attr in hostvars[host]:
+                            for record in attr:
+                                if not record.endswith("."):
+                                    ret[zone]['records'][record+"."+zone] = {"A": [{"c": ip}]}
 
-                                if entry == A['c']:
-                                    for prefix in prefixes:
-                                        record_name = prefix + '.' + record
-                                        if record_name not in localhost['pdns_auth_api_zones'][zone]['records'] \
-                                                and record[0:len(prefix)] != prefix:
-                                            processed_zones[zone]['records'][prefix + '.' + record] = {"A": [{"c": entry}]}
-                except:
+    # Values from served domains
+    if 'dns_facts_reverse_proxies' in localhost:
+        new_records = {}
+        for proxy in localhost['dns_facts_reverse_proxies']:
+            prefixes = []
+            suffixes = []
+            ignoredHosts = []
+            if 'domain_prefixes' in hostvars[proxy]:
+                prefixes = hostvars[proxy]['domain_prefixes']
+            if 'domain_suffixes' in hostvars[proxy]:
+                suffixes = hostvars[proxy]['domain_suffixes']
+            if 'ignore_hosts' in hostvars[proxy]:
+                ignoredHosts = hostvars[proxy]['ignore_hosts']
+            # Iterate over hosts
+            for hostname,hostcontent in hostvars.items():
+                if hostname in ignoredHosts or 'served_domains' not in hostcontent:
                     continue
-        for zone in processed_zones:
-            for key, value in processed_zones[zone]['records'].items():
-                localhost['pdns_auth_api_zones'][zone]['records'][key] = value
+                for domainblock in hostcontent['served_domains']:
+                    # Skip this served domain
+                    if 'reverse_proxy_skip' in domainblock and domainblock['reverse_proxy_skip']:
+                        continue
+                    if 'domains' not in domainblock:
+                        continue
+                    for domainname in domainblock['domains']:
+                        if domainname.endswith('.'):
+                            new_records[domainname] = hostvars[proxy]['ansible_host']
+                        else:
+                            for prefix in prefixes:
+                                if prefix != '':
+                                    prefix += '.'
+                                for suffix in suffixes:
+                                    if suffix != '':
+                                        suffix = '.' + suffix
+                                    new_records[prefix + domainname + suffix] = hostvars[proxy]['ansible_host']
+        # Try to insert the new records
+        for name,content in new_records.items():
+            # Try to find the proper zone
+            zone = ''
+            for zonename in ret.keys():
+                # We need the zone with the longest common suffix
+                if name.endswith(zonename) and len(zonename) > len(zone):
+                    zone = zonename
+            # Nothing found :/
+            if zone == '':
+                continue
+            # Can we insert the record?
+            zone = ret[zone]
+            if 'records' not in zone:
+                zone['records'] = {
+                    name: {
+                        'A': [
+                            {
+                                'c': content
+                            }
+                        ]
+                    }
+                }
+            else:
+                if name in zone['records'] and 'A' in zone['records'][name]:
+                    continue
+                zone['records'][name] = {
+                    'A': [
+                        {
+                            'c': content
+                        }
+                    ]
+                }
 
     # Internal Records generation
-    if 'dns_facts_internal_records' in hostvars[myHostname]:
-        localhost = hostvars[myHostname]
-        subdomain = localhost['dns_facts_internal_records']['subdomain_to_insert']
-        domain = localhost['dns_facts_internal_records']['domain_append']
-        if 'pdns_auth_api_zones' in localhost and \
-                domain in localhost['pdns_auth_api_zones'] and \
-                localhost['pdns_auth_api_zones'][domain]['kind'] in\
-                ['Master', 'Native']:
-                    records = localhost['pdns_auth_api_zones'][domain]['records']
-                    #print(records)
-                    for host in hostvars:
-                        record_name = hostvars[host]['inventory_hostname'] + subdomain + domain
-                        if record_name not in records:
-                            records[record_name] = {"A": [{"c": hostvars[host]['ansible_host']}]}
+    if 'dns_facts_internal_records' in localhost:
+        if 'subdomain' in localhost['dns_facts_internal_records']:
+            subdomain = localhost['dns_facts_internal_records']['subdomain']
+        else:
+            subdomain = ''
+        if 'sshfp_algorithms' in localhost['dns_facts_internal_records']:
+            sshfp_algos = localhost['dns_facts_internal_records']['sshfp_algorithms']
+        else:
+            sshfp_algos = []
+        if 'sshfp_fp_types' in localhost['dns_facts_internal_records']:
+            sshfp_fp_types = localhost['dns_facts_internal_records']['sshfp_fp_types']
+        else:
+            sshfp_fp_types = []
+        generateSshfp = 'generate_sshfp' in localhost['dns_facts_internal_records'] and localhost['dns_facts_internal_records']['generate_sshfp']
+        zone = localhost['dns_facts_internal_records']['zone']
+        if zone in ret and 'records' in ret[zone]:
+            records = ret[zone]['records']
+            for host in hostvars.keys():
+                record_name = "{}.{}.{}".format(host, subdomain, zone)
+                if record_name not in records:
+                    records[record_name] = {"A": [{"c": hostvars[host]['ansible_host']}]}
+                    if generateSshfp:
+                        records[record_name].update(process_sshfp_records(sshfp_directory, host, subdomain, zone, sshfp_algos, sshfp_fp_types))
+
+    # Generate statments
+    if 'dns_facts_generate' in localhost:
+        for zonename,zonecontents in localhost['dns_facts_generate'].items():
+            if zonename not in ret:
+                continue
+            for generate,contents in zonecontents.items():
+                start,end = generate.split('-')
+                for i in range(int(start), int(end) + 1, 1):
+                    new = deepcopy(contents)
+                    for name,t in new.items():
+                        for record in t:
+                            if 'c' in record:
+                                record['c'] = record['c'].replace('$', str(i))
+                    ret[zonename]['records'][str(i) + '.' + zonename] = new
+
+    # Reverse records
+    if 'dns_facts_reverse_suffix' in localhost:
+        internal_zone = localhost['dns_facts_reverse_suffix']
+        for host in hostvars:
+            # Collect IPs from host
+            ips = [ hostvars[host]['ansible_host'] ]
+            for var in [ 'interfaces', 'bridges' ]:
+                if var in hostvars[host]:
+                    for interface in hostvars[host][var]:
+                        if 'ip' in interface:
+                            ips += [ interface['ip'].split('/')[0] ]
+            ips = list(set(ips))
+            # Add records
+            for raw_ip in ips:
+                ip = ipaddress.IPv4Address(raw_ip)
+                reverse = ip.reverse_pointer
+                network_reverse = ".".join(str(reverse).split(".")[1:])
+                # Unknown reverse zone?
+                if network_reverse not in ret:
+                    continue
+                target_zone = ret[network_reverse]
+                if 'records' not in target_zone:
+                    target_zone['records'] = {};
+                if reverse not in target_zone['records']:
+                    target_zone['records'][reverse] = { "PTR": [ {"c": "{}.{}".format(host, internal_zone)} ] }
 
     # Secondaries
-    if 'dns_facts_primary_servers' in hostvars[myHostname] and 'dns_facts_secondary_name' in hostvars[myHostname]:
-        for hostname in hostvars[myHostname]['dns_facts_primary_servers']:
+    if 'dns_facts_primary_servers' in localhost and 'dns_facts_secondary_name' in localhost:
+        for hostname in localhost['dns_facts_primary_servers']:
             if hostname not in hostvars or 'pdns_auth_api_zones' not in hostvars[hostname]:
                 continue
-            for zone in hostvars[hostname]['pdns_auth_api_zones']:
-                if zone['kind'] in ['Master', 'Native']:
-                    for ns in zone['records'][zone['name']]['NS']:
-                        if 'c' in ns and ns['c'] == hostvars[myHostname]['dns_facts_secondary_name']:
-                            ret.append({
-                                'name': zone['name'],
+            for name,contents in hostvars[hostname]['pdns_auth_api_zones'].items():
+                if 'kind' not in contents or contents['kind'] in ['Master', 'Native']:
+                    for ns in contents['records'][name]['NS']:
+                        if 'c' in ns and ns['c'] == localhost['dns_facts_secondary_name']:
+                            ret[name] = {
                                 'kind': 'Slave',
                                 'masters': [hostvars[hostname]['ansible_host']]
-                            })
+                            }
                             break
 
     print(json.dumps(ret))
