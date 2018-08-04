@@ -24,6 +24,24 @@
   set_fact:
     pdns_auth_api_zones: "{{ out.stdout | from_json }}"
 
+- name: Rewrite hostvars to temporary file
+  copy:
+    content: "{{ hostvars }}"
+    dest: "{{ tempfile.path }}"
+  changed_when: false
+  when: dns_facts_primary_servers is defined and dns_facts_secondary_name is defined
+
+- name: Generate secondary facts
+  script: "scripts/secondary.py {{ ansible_hostname }} {{ tempfile.path }}"
+  register: out
+  changed_when: false
+  when: dns_facts_primary_servers is defined and dns_facts_secondary_name is defined
+
+- name: Apply secondary facts
+  set_fact:
+    pdns_auth_api_zones: "{{ out.stdout | from_json }}"
+  when: dns_facts_primary_servers is defined and dns_facts_secondary_name is defined
+
 - name: Remove temporary file
   file:
     path: "{{ tempfile.path }}"
