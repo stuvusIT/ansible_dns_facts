@@ -294,20 +294,5 @@ if __name__ == "__main__":
                 if reverse not in target_zone['records']:
                     target_zone['records'][reverse] = { "PTR": [ {"c": "{}.{}".format(host, internal_zone)} ] }
 
-    # Secondaries
-    if 'dns_facts_primary_servers' in localhost and 'dns_facts_secondary_name' in localhost:
-        for hostname in localhost['dns_facts_primary_servers']:
-            if hostname not in hostvars or 'pdns_auth_api_zones' not in hostvars[hostname]:
-                continue
-            for name,contents in hostvars[hostname]['pdns_auth_api_zones'].items():
-                if 'kind' not in contents or contents['kind'] in ['Master', 'Native']:
-                    for ns in contents['records'][name]['NS']:
-                        if 'c' in ns and ns['c'] == localhost['dns_facts_secondary_name']:
-                            ret[name] = {
-                                'kind': 'Slave',
-                                'masters': [hostvars[hostname]['ansible_host']]
-                            }
-                            break
-
     print(json.dumps(ret))
 
