@@ -92,9 +92,10 @@ def removeStringFromObject(obj, string_to_search, replace_string):
 if __name__ == "__main__":
     myHostname = argv[1]
     hostvars = json.loads(open(argv[2]).read())
+    sshfp_directory = argv[3]
     localhost = hostvars[myHostname]
     ret = {}
-    if 'pdns_auth_api_zones' in hostvars[myHostname]:
+    if 'pdns_auth_api_zones' in localhost:
         ret = hostvars[myHostname]['pdns_auth_api_zones']
 
     # Zone Clones
@@ -118,6 +119,7 @@ if __name__ == "__main__":
             new_zone = mergeDict(origin_zone, clone_zone)
             # Clone additional data
             for key in origin_zone.keys():
+                # Exclude 'records' and everything that is already set
                 if key not in [ 'records' ] + list(clone_zone.keys()):
                     new_zone[key] = origin_zone[key]
             # Set kind
@@ -249,7 +251,7 @@ if __name__ == "__main__":
                 if record_name not in records:
                     records[record_name] = {"A": [{"c": hostvars[host]['ansible_host']}]}
                     if generateSshfp:
-                        records[record_name].update(process_sshfp_records(argv[3], host, subdomain, zone, sshfp_algos, sshfp_fp_types))
+                        records[record_name].update(process_sshfp_records(sshfp_directory, host, subdomain, zone, sshfp_algos, sshfp_fp_types))
 
     # Generate statments
     if 'dns_facts_generate' in localhost:
