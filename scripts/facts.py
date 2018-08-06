@@ -160,6 +160,70 @@ if __name__ == "__main__":
                                 if not record.endswith("."):
                                     ret[zone]['records'][record+"."+zone] = {"A": [{"c": ip}]}
 
+    # Values from MX servers
+    if 'dns_facts_mx_servers' in localhost:
+        new_records = {}
+        for server in localhost['dns_facts_mx_servers']:
+            # Is this server valid?
+            if 'dns_facts_mx_my_name' not in hostvars[server] or 'dns_facts_mx_names' not in hostvars[server]:
+                continue
+            # Default priority
+            default_prio = 0
+            if 'dns_facts_mx_prio' in hostvars[server]:
+                default_prio = hostvars[server]['dns_facts_mx_prio']
+            # Names
+            for nameOrConfig in hostvars[server]['dns_facts_mx_names']:
+                if type(nameOrConfig) is str:
+                    name = nameOrConfig
+                    prio = default_prio
+                else:
+                    name = nameOrConfig['name']
+                    prio = nameOrConfig['prio']
+                new_records[name] = str(prio) + ' ' + hostvars[server]['dns_facts_mx_my_name'] + '.'
+        # Try to insert the new records
+        for name,content in new_records.items():
+            # Try to find the proper zone
+            zone = ''
+            for zonename in ret.keys():
+                # We need the zone with the longest common suffix
+                if name.endswith(zonename) and len(zonename) > len(zone):
+                    zone = zonename
+            # Nothing found :/
+            if zone == '':
+                continue
+            # Can we insert the record?
+            zone = ret[zone]
+            if 'records' not in zone:
+                zone['records'] = {
+                    name: {
+                        'MX': [
+                            {
+                                'c': content
+                            }
+                        ]
+                    }
+                }
+            else:
+                if name in zone['records'] and 'MX' in zone['records'][name]:
+                    zone['records'][name]['MX'].append({ 'c': content })
+                elif name in zone['records']:
+                    zone['records'][name].update({
+                        'MX': [
+                            {
+                                'c': content
+                            }
+                        ]
+                    })
+                else:
+                    zone['records'][name] = {
+                        'MX': [
+                            {
+                                'c': content
+                            }
+                        ]
+                    }
+
+
     # Values from served domains
     if 'dns_facts_reverse_proxies' in localhost:
         new_records = {}

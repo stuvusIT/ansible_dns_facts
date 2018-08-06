@@ -38,6 +38,12 @@ We call them internal records.
 They are usually used in a subdomain where the search domain of your hosts point to.
 This gives convenience, because you can use unqualified hostnames in your internal network (hence the name).
 
+### MX record generation
+
+The role can automatically generate MX records.
+This is done by specifying a list of MX servers.
+Each server specifies its own name and a list of names pointing to this name.
+
 ## Requirements
 
 None
@@ -57,6 +63,15 @@ If you don't want to use any features, you don't need to set any variables.
 | `dns_facts_reverse_suffix`   | Suffix to append to all reverse record PTR values.                                                                                                                                                      |
 | `dns_facts_generate`         | Dict that specifies bind-like `$GENERATE` instructions. See below                                                                                                                                       |
 | `dns_facts_reverse_proxies`  | List of reverseproxy hosts                                                                                                                                                                              |
+| `dns_facts_mx_servers`       | List of MX hosts                                                                                                                                                                                        |
+
+Non-DNS servers may also set these variables:
+
+| Name                   | Default/Required | Description                                                                                                                |
+|------------------------|:----------------:|----------------------------------------------------------------------------------------------------------------------------|
+| `dns_facts_mx_my_name` |                  | Name of this server that is added to all MX records pointing to it                                                         |
+| `dns_facts_mx_prio`    | `0`              | Default priority of MX records pointing to this server                                                                     |
+| `dns_facts_mx_names`   | `[]`             | List of names pointing to this server. Each name may be a string or a dict consisting of a `name` field and a `prio` field |
 
 
 ## `dns_facts_zone_clones`
