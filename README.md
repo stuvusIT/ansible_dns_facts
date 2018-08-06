@@ -53,6 +53,12 @@ The role can automatically generate MX records.
 This is done by specifying a list of MX servers.
 Each server specifies its own name and a list of names pointing to this name.
 
+### TXT autoquote
+
+Just don't quote your TXT records, we'll take care of that.
+Or do quote them.
+We don't care.
+
 ## Requirements
 
 None
