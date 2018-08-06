@@ -332,6 +332,21 @@ if __name__ == "__main__":
                                 record['c'] = record['c'].replace('$', str(i))
                     ret[zonename]['records'][str(i) + '.' + zonename] = new
 
+    # TXT quoting
+    for zone in ret.values():
+        if 'records' not in zone:
+            continue
+        for name, contents in zone['records'].items():
+            for rec_type, contents in contents.items():
+                if rec_type != 'TXT':
+                    continue
+                for record in contents:
+                    if 'c' not in record:
+                        continue
+                    if record['c'].startswith('"') and record['c'].endswith('"'):
+                        continue
+                    record['c'] = '"' + record['c'] + '"'
+
     # Reverse records
     if 'dns_facts_reverse_suffix' in localhost:
         internal_zone = localhost['dns_facts_reverse_suffix']
