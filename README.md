@@ -14,9 +14,18 @@ The name that is searched in the zone can be set, as well as the hosts which sho
 
 The internal records feature use the add records for every host in the inventory using the `inventory_name` as hostname and the `ansible_host` attribute for the ip address
 
-### Forward records
+### A/CNAME records
 
-Forward records are used to extract record generation from host vars
+Each host can define a list of A records and CNAME records.
+This keeps all host-relevant data at the same place (in its hostvars).
+
+Just enable `dns_facts_generate_from_hostvars` on your DNS server and set `dns_facts_my_records` on servers that need A/CNAME records.
+In the most simple case, this is just a list of A names.
+If you want something more complex, you can use dicts with a `name` key (required) and an optional `ip` key (overriding the default IP which is `ansible_host`).
+Another possible dict key is `cnames` which is supposed to point to a list of strings or dicts.
+Each dict element must (again) have a `name` key and may optionally specify a `target` key to override the CNAME target (the trailing dot is automatically appended).
+CNAME processing is recursive, so if you decide to have CNAMEs pointing to this CNAME, just specify `cnames` inside your CNAME.
+This recursion can go to an abitrary depth.
 
 ### `reverseproxy`-compatibility
 
@@ -53,17 +62,17 @@ None
 All variables are optional.
 If you don't want to use any features, you don't need to set any variables.
 
-| Name                         | Description                                                                                                                                                                                             |
-|------------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `dns_facts_primary_servers`  | Servers that should be checked for zones this server should be secondary for                                                                                                                            |
-| `dns_facts_secondary_name`   | This host is selected as a secondary when this name is found as a NS of the primary                                                                                                                     |
-| `dns_facts_zone_clones`      | This is a dict that specifies which zone attributes should be copied to a new zone. During this process each apperence of the old zone name is replaced with the new zone name. More information below. |
-| `dns_facts_internal_records` | This is a dict that specifies settings for generating internal records from your ansible inventory. More information below.                                                                             |
-| `dns_facts_forward_records`  | This is a dict that specifies settings for generating forward records from your ansible inventory. More information below.                                                                              |
-| `dns_facts_reverse_suffix`   | Suffix to append to all reverse record PTR values.                                                                                                                                                      |
-| `dns_facts_generate`         | Dict that specifies bind-like `$GENERATE` instructions. See below                                                                                                                                       |
-| `dns_facts_reverse_proxies`  | List of reverseproxy hosts                                                                                                                                                                              |
-| `dns_facts_mx_servers`       | List of MX hosts                                                                                                                                                                                        |
+| Name                               | Description                                                                                                                                                                                             |
+|------------------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `dns_facts_primary_servers`        | Servers that should be checked for zones this server should be secondary for                                                                                                                            |
+| `dns_facts_secondary_name`         | This host is selected as a secondary when this name is found as a NS of the primary                                                                                                                     |
+| `dns_facts_zone_clones`            | This is a dict that specifies which zone attributes should be copied to a new zone. During this process each apperence of the old zone name is replaced with the new zone name. More information below. |
+| `dns_facts_internal_records`       | This is a dict that specifies settings for generating internal records from your ansible inventory. More information below.                                                                             |
+| `dns_facts_generate_from_hostvars` | Whether to enable the automatic `A`/`CNAME` generation from hostvars                                                                                                                                    |
+| `dns_facts_reverse_suffix`         | Suffix to append to all reverse record PTR values.                                                                                                                                                      |
+| `dns_facts_generate`               | Dict that specifies bind-like `$GENERATE` instructions. See below                                                                                                                                       |
+| `dns_facts_reverse_proxies`        | List of reverseproxy hosts                                                                                                                                                                              |
+| `dns_facts_mx_servers`             | List of MX hosts                                                                                                                                                                                        |
 
 Non-DNS servers may also set these variables:
 
@@ -72,6 +81,7 @@ Non-DNS servers may also set these variables:
 | `dns_facts_mx_my_name` |                  | Name of this server that is added to all MX records pointing to it                                                         |
 | `dns_facts_mx_prio`    | `0`              | Default priority of MX records pointing to this server                                                                     |
 | `dns_facts_mx_names`   | `[]`             | List of names pointing to this server. Each name may be a string or a dict consisting of a `name` field and a `prio` field |
+| `dns_facts_my_records` | `[]`             | List of names or CNAMES pointing to this server. See the above section for more information                                |
 
 
 ## `dns_facts_zone_clones`
@@ -94,14 +104,6 @@ If `kind` is set to `Master-Template`, `Slave-Template`, or `Native-Template`, t
 |-------------|:------------------:|------------------------------------------------------------------|
 | `zone`      | :heavy_check_mark: | Zone where the internal records are inserted in                  |
 | `subdomain` |                    | Subdomain that is inserted between the hostname and the zonename |
-
-## `dns_facts_forward_records`
-
-| Name     | Required/Default     | Description                                                    |
-|----------|:--------------------:|----------------------------------------------------------------|
-| `name`   | :heavy_check_mark:   | Name of the top level attribute to search for in the host vars |
-| `ip`     | `{{ ansible_host }}` | Value of the ip address to set the record to.                  |
-| `suffix` | :heavy_check_mark:   | List of domains where the record should be inserted            |
 
 ## `dns_facts_generate`
 
@@ -126,6 +128,7 @@ That means the content of the dict begins with e.g. `CNAME` and has `c` and `t` 
        subdomain: int
        zone: example.de
      dns_facts_reverse_suffix: int.example.com.
+     dns_facts_generate_from_hostvars: true
      dns_facts_generate:
        0.168.192.in-addr.arpa:
          0-63:

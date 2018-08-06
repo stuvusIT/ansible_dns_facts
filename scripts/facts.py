@@ -89,6 +89,33 @@ def removeStringFromObject(obj, string_to_search, replace_string):
         return obj
     return obj
 
+def handleCnamesOfHost(primaryName, cnameConfig):
+    '''
+    Recursively builds a list of all CNAME records for the given host
+
+    :param primaryName str: The main name of this host
+    :param cnameConfig object: The CNAME configuration of the host
+    '''
+
+    # Simple CNAMEs
+    if type(cnameConfig) is str:
+        return { cnameConfig: { 'CNAME': [ primaryName + '.' ] } }
+    # Custom Name/CNAMEs
+    ret = {}
+    name = cnameConfig['name']
+    target = primaryName
+    # Different target
+    if 'target' in cnameConfig:
+        target = cnameConfig['target']
+    # CNAMEs
+    if 'cnames' in cnameConfig:
+        for cname in cnameConfig['cnames']:
+            # Merge in this sub-CNAME
+            ret = mergeDict(ret, handleCnamesOfHost(name, cname))
+    # Merge in this CNAME
+    ret = mergeDict(ret, { name: { 'CNAME': [ target + '.' ] } })
+    return ret
+
 if __name__ == "__main__":
     myHostname = argv[1]
     hostvars = json.loads(open(argv[2]).read())
@@ -144,21 +171,61 @@ if __name__ == "__main__":
             ret.pop(entry, None)
 
     # Values from hostvars
-    if 'pdns_auth_api_zones' in localhost and 'dns_facts_forward_records' in localhost:
-        for attr_item in localhost['dns_facts_forward_records']:
-            attr = localhost['dns_facts_forward_records'][attr_item]['name']
-            if 'ip' in localhost['dns_facts_forward_records'][attr_item]:
-                ip = localhost['dns_facts_forward_records'][attr_item]['ip']
-            else:
-                ip = hostvars[host]['ansible_host']
-            suffixes = localhost['dns_facts_forward_records'][attr_item]['suffix']
-            for zone in ret:
-                if ret[zone]['kind'] in ['Master', 'Native'] and zone in suffixes:
-                    for host in hostvars:
-                        if attr in hostvars[host]:
-                            for record in attr:
-                                if not record.endswith("."):
-                                    ret[zone]['records'][record+"."+zone] = {"A": [{"c": ip}]}
+    if 'dns_facts_generate_from_hostvars' in localhost and localhost['dns_facts_generate_from_hostvars']:
+        new_records = {}
+        for hostname,hostcontents in hostvars.items():
+            if 'dns_facts_my_records' not in hostcontents:
+                continue
+            for nameOrConfig in hostcontents['dns_facts_my_records']:
+                if type(nameOrConfig) is str:
+                    # Simple name
+                    name = nameOrConfig
+                    ip = hostcontents['ansible_host']
+                else:
+                    # Dict with custom IP/CNAMEs
+                    name = nameOrConfig['name']
+                    # Custom IP
+                    if 'ip' in nameOrConfig:
+                        ip = nameOrConfig['ip']
+                    else:
+                        ip = hostcontents['ansible_host']
+                    # CNAMEs
+                    if 'cnames' in nameOrConfig:
+                        for cname in nameOrConfig['cnames']:
+                            # Add this CNAME
+                            new_records = mergeDict(new_records, handleCnamesOfHost(name, cname))
+                # Add the new A record
+                new_records = mergeDict(new_records, { name: { 'A': [ ip ] } })
+        # Add the new records
+        for name, contents in new_records.items():
+            # Try to find the proper zone
+            zone = ''
+            for zonename in ret.keys():
+                # We need the zone with the longest common suffix
+                if name.endswith(zonename) and len(zonename) > len(zone):
+                    zone = zonename
+            # Nothing found :/
+            if zone == '':
+                continue
+            zone = ret[zone]
+            if 'records' not in zone:
+                zone['records'] = {}
+            if name not in zone['records']:
+                zone['records'][name] = {}
+            name_in_zone = zone['records'][name]
+            # Try to insert the records
+            for rec_type, contents in contents.items():
+                for content in contents:
+                    if rec_type in name_in_zone:
+                        found = False
+                        for record in name_in_zone[rec_type]:
+                            if 'c' in record and record['c'] == content:
+                                found = True
+                                break
+                        if not found:
+                            name_in_zone[rec_type].append({ 'c': content })
+                    else:
+                        name_in_zone[rec_type] = [{ 'c': content }]
 
     # Values from MX servers
     if 'dns_facts_mx_servers' in localhost:
