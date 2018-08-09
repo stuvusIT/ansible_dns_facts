@@ -316,7 +316,8 @@ if __name__ == "__main__":
                         continue
                     for domainname in domainblock['domains']:
                         if domainname.endswith('.'):
-                            new_records[domainname] = hostvars[proxy]['ansible_host']
+                            # Remove trailing dot and add proxy to new records
+                            new_records[domainname[:-1]] = hostvars[proxy]['ansible_host']
                         else:
                             for prefix in prefixes:
                                 if prefix != '':
@@ -349,15 +350,22 @@ if __name__ == "__main__":
                     }
                 }
             else:
-                if name in zone['records'] and 'A' in zone['records'][name]:
-                    continue
-                zone['records'][name] = {
-                    'A': [
+                if name in zone['records']:
+                    if 'A' in zone['records'][name]:
+                        continue
+                    zone['records'][name]['A'] = [
                         {
                             'c': content
                         }
                     ]
-                }
+                else:
+                    zone['records'][name] = {
+                        'A': [
+                            {
+                                'c': content
+                            }
+                        ]
+                    }
 
     # Internal Records generation
     if 'dns_facts_internal_records' in localhost:
