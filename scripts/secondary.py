@@ -15,7 +15,12 @@ if __name__ == "__main__":
         if hostname not in hostvars or 'pdns_auth_api_zones' not in hostvars[hostname]:
             continue
         for name,contents in hostvars[hostname]['pdns_auth_api_zones'].items():
-            if 'kind' not in contents or contents['kind'] in ['Master', 'Native']:
+            if 'kind' in contents and contents['kind'] == 'Slave':
+                ret[name] = {
+                    'kind': 'Slave',
+                    'masters': contents['masters']
+                    }
+            else:
                 for ns in contents['records'][name]['NS']:
                     if 'c' in ns and ns['c'] == localhost['dns_facts_secondary_name']:
                         ret[name] = {
