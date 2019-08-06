@@ -246,7 +246,9 @@ if __name__ == "__main__":
                 else:
                     name = nameOrConfig['name']
                     prio = nameOrConfig['prio']
-                new_records[name] = str(prio) + ' ' + hostvars[server]['dns_facts_mx_my_name'] + '.'
+                if name not in new_records:
+                    new_records[name] = []
+                new_records[name].append({ 'c': str(prio) + ' ' + hostvars[server]['dns_facts_mx_my_name'] + '.' })
         # Try to insert the new records
         for name,content in new_records.items():
             # Try to find the proper zone
@@ -263,31 +265,19 @@ if __name__ == "__main__":
             if 'records' not in zone:
                 zone['records'] = {
                     name: {
-                        'MX': [
-                            {
-                                'c': content
-                            }
-                        ]
+                        'MX': content
                     }
                 }
             else:
                 if name in zone['records'] and 'MX' in zone['records'][name]:
-                    zone['records'][name]['MX'].append({ 'c': content })
+                    zone['records'][name]['MX'] += content
                 elif name in zone['records']:
                     zone['records'][name].update({
-                        'MX': [
-                            {
-                                'c': content
-                            }
-                        ]
+                        'MX': content
                     })
                 else:
                     zone['records'][name] = {
-                        'MX': [
-                            {
-                                'c': content
-                            }
-                        ]
+                        'MX': content
                     }
 
 
