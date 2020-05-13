@@ -284,44 +284,45 @@ if __name__ == "__main__":
     if 'dns_facts_mx_servers' in localhost:
         new_records = {}
         server = localhost['dns_facts_mx_servers'][0]
-        for nameOrConfig in hostvars[server]['dns_facts_mx_names']:
-            if type(nameOrConfig) is str:
-                name = nameOrConfig
-            else:
-                name = nameOrConfig['name']
-            if name not in new_records:
-                new_records[name] = []
-            new_records[name].append( { 'c': str(hostvars[server]['dns_facts_spf_record']) } )
-        # Try to insert the new records
-        for name,content in new_records.items():
-            # Try to find the proper zone
-            zone = ''
-            for zonename in ret.keys():
-                # We need the zone with the longest common suffix
-                if name.endswith(zonename) and len(zonename) > len(zone):
-                    zone = zonename
-            # Nothing found :/
-            if zone == '':
-                continue
-            # Can we insert the record?
-            zone = ret[zone]
-            if 'records' not in zone:
-                zone['records'] = {
-                    name: {
-                        'TXT': content
-                    }
-                }
-            else:
-                if name in zone['records'] and 'TXT' in zone['records'][name]:
-                    zone['records'][name]['TXT'] += content
-                elif name in zone['records']:
-                    zone['records'][name].update({
-                        'TXT': content
-                    })
+        if 'dns_facts_spf_record' in hostvars[server]:
+            for nameOrConfig in hostvars[server]['dns_facts_mx_names']:
+                if type(nameOrConfig) is str:
+                    name = nameOrConfig
                 else:
-                    zone['records'][name] = {
-                        'TXT': content
+                    name = nameOrConfig['name']
+                if name not in new_records:
+                    new_records[name] = []
+                new_records[name].append( { 'c': str(hostvars[server]['dns_facts_spf_record']) } )
+            # Try to insert the new records
+            for name,content in new_records.items():
+                # Try to find the proper zone
+                zone = ''
+                for zonename in ret.keys():
+                    # We need the zone with the longest common suffix
+                    if name.endswith(zonename) and len(zonename) > len(zone):
+                        zone = zonename
+                # Nothing found :/
+                if zone == '':
+                    continue
+                # Can we insert the record?
+                zone = ret[zone]
+                if 'records' not in zone:
+                    zone['records'] = {
+                        name: {
+                            'TXT': content
+                        }
                     }
+                else:
+                    if name in zone['records'] and 'TXT' in zone['records'][name]:
+                        zone['records'][name]['TXT'] += content
+                    elif name in zone['records']:
+                        zone['records'][name].update({
+                            'TXT': content
+                        })
+                    else:
+                        zone['records'][name] = {
+                            'TXT': content
+                        }
 
     # Values from served domains
     if 'dns_facts_reverse_proxies' in localhost:
