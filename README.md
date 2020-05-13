@@ -53,6 +53,9 @@ The role can automatically generate MX records.
 This is done by specifying a list of MX servers.
 Each server specifies its own name and a list of names pointing to this name.
 
+### SPF record generation
+Sets a spf record on all domains with MX record.
+
 ### TXT autoquote
 
 Just don't quote your TXT records, we'll take care of that.
@@ -88,6 +91,7 @@ Non-DNS servers may also set these variables:
 | `dns_facts_mx_prio`    | `0`              | Default priority of MX records pointing to this server                                                                     |
 | `dns_facts_mx_names`   | `[]`             | List of names pointing to this server. Each name may be a string or a dict consisting of a `name` field and a `prio` field |
 | `dns_facts_my_records` | `[]`             | List of names or CNAMES pointing to this server. See the above section for more information                                |
+| `dns_facts_spf_record` |                  | SPF record to be set on all domains with MX record                                                                         |
 
 
 ## `dns_facts_zone_clones`
