@@ -13,7 +13,7 @@ def process_sshfp_records(path, filename, subdomain, zone, sshfp_algos, sshfp_fp
 
     :param str path: The path to the folder containg the file
     :param str filename: filename of the file
-    :param str subdomain: subdomain to append
+    :param str subdomain: subdomain to append (including trailing dot). Example: 'internal.'
     :param str zone: zone to append
     :param str[] sshfp_algos: List of allowed sshfp algorithms
     :param str[] sshfp_fp_types: List of allowed sshfp fingerprint types
@@ -403,7 +403,7 @@ if __name__ == "__main__":
     # Internal Records generation
     if 'dns_facts_internal_records' in localhost:
         if 'subdomain' in localhost['dns_facts_internal_records']:
-            subdomain = localhost['dns_facts_internal_records']['subdomain']
+            subdomain = localhost['dns_facts_internal_records']['subdomain'] + '.'
         else:
             subdomain = ''
         if 'sshfp_algorithms' in localhost['dns_facts_internal_records']:
@@ -419,7 +419,7 @@ if __name__ == "__main__":
         if zone in ret and 'records' in ret[zone]:
             records = ret[zone]['records']
             for host in hostvars.keys():
-                record_name = "{}.{}.{}".format(host, subdomain, zone)
+                record_name = "{}.{}{}".format(host, subdomain, zone)
                 if record_name not in records:
                     records[record_name] = {"A": [{"c": hostvars[host]['ansible_host']}]}
                     if generateSshfp:
