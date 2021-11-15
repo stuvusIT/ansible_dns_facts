@@ -455,6 +455,19 @@ if __name__ == "__main__":
                         continue
                     record['c'] = '"' + record['c'] + '"'
 
+    # Null-MX Records (RFC 7505)
+    for zone in ret.values():
+        if 'records' not in zone:
+            continue
+        for name, contents in zone['records'].items():
+            if "A" in contents and "MX" not in contents:
+                contents['MX'] = [
+                    {
+                        'c': str(0) + ' ' + '.'
+                    }
+                ]
+
+
     # Reverse records
     if 'dns_facts_reverse_suffix' in localhost:
         internal_zone = localhost['dns_facts_reverse_suffix']
