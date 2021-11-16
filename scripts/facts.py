@@ -460,7 +460,7 @@ if __name__ == "__main__":
         if 'records' not in zone:
             continue
         for name, contents in zone['records'].items():
-            if "A" in contents and "MX" not in contents:
+            if ("A" in contents or "AAAA" in contents) and "MX" not in contents:
                 contents['MX'] = [
                     {
                         'c': str(0) + ' ' + '.'
