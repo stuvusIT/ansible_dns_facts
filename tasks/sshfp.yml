@@ -13,17 +13,22 @@
 
 - name: Collect sshfp records
   command:
-    ssh-keygen -r "{{ item }}"
-  delegate_to: "{{ item }}"
+    ssh-keygen -r "{{ hostname }}"
+  delegate_to: "{{ hostname }}"
   changed_when: false
-  with_items: "{{ hostvars.keys() | difference(sshfp_files.files | map(attribute='path') | map('basename') | list) }}"
+  loop: "{{ hostvars.keys() | difference(sshfp_files.files | map(attribute='path') | map('basename') ) }}"
+  loop_control:
+    loop_var: hostname
   register: records
+  ignore_unreachable: true
 
 - name: Write sshfp records
   copy:
-    dest: "{{ dns_facts_sshfp_path }}/{{ item }}"
-    content: "{{ records.results | selectattr('item', 'equalto', item) | map(attribute='stdout') | list | first }}"
+    dest: "{{ dns_facts_sshfp_path }}/{{ result.hostname }}"
+    content: "{{ result.stdout }}"
     owner: root
     group: root
     mode: 0644
-  with_items: "{{ records.results | map(attribute='item') | list }}"
+  loop: "{{ records.results | selectattr('unreachable', 'undefined') }}"
+  loop_control:
+    loop_var: result
