@@ -76,7 +76,7 @@ def removeStringFromObject(obj, string_to_search, replace_string):
     :param str replace_string: The string to replace a
     '''
     if isinstance(obj, dict):
-        for key, value in obj.items():
+        for key, value in list(obj.items()):
             del(obj[key])
             key = re.sub(string_to_search, replace_string, key)
             obj[key] = removeStringFromObject(value, string_to_search, replace_string)
