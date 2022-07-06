@@ -1,4 +1,4 @@
-# dns-facts
+# dns_facts
 
 This role generates facts for the [pdns-authoritative-api](https://github.com/stuvusIT/pdns-authoritative-api) role.
 While this role is not required for the pdns-authoritative-api, it makes some things a lot easier.
@@ -121,10 +121,14 @@ That means the content of the dict begins with e.g. `CNAME` and has `c` and `t` 
 
 ## Example Playbook
 
+The following example playbook assumes that you cloned this role to
+`roles/dns_facts`
+(i.e. the name of the role is `dns_facts` instead of `ansible_dns_facts`).
+
 ```yml
 - hosts: dns
   roles:
-  - dns-facts:
+  - dns_facts:
      dns_facts_zone_clones:
        example.com:
          zone: example.de
