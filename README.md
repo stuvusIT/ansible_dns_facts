@@ -73,6 +73,7 @@ If you don't want to use any features, you don't need to set any variables.
 
 | Name                               | Description                                                                                                                                                                                             |
 |------------------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `dns_facts_dns_ipv4`               | The IPv4 address where this DNS server is reachable via TCP/UDP ports 53. This variable is required to set on primary servers that have at least one secondary.                                         |
 | `dns_facts_primary_servers`        | Servers that should be checked for zones this server should be secondary for                                                                                                                            |
 | `dns_facts_secondary_name`         | This host is selected as a secondary when this name is found as a NS of the primary                                                                                                                     |
 | `dns_facts_zone_clones`            | This is a dict that specifies which zone attributes should be copied to a new zone. During this process each apperence of the old zone name is replaced with the new zone name. More information below. |
