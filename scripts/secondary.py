@@ -25,7 +25,7 @@ if __name__ == "__main__":
                     if 'c' in ns and ns['c'] == localhost['dns_facts_secondary_name']:
                         ret[name] = {
                             'kind': 'Slave',
-                            'masters': [hostvars[hostname]['ansible_host']]
+                            'masters': [hostvars[hostname]['dns_facts_dns_ipv4']]
                         }
                         break
 
