@@ -379,7 +379,9 @@ if __name__ == "__main__":
             for host in hostvars.keys():
                 record_name = "{}.{}{}".format(host, subdomain, zone)
                 if record_name not in records:
-                    records[record_name] = {"A": [{"c": hostvars[host]['ansible_host']}]}
+                    records[record_name] = {}
+                if "A" not in records[record_name]:
+                    records[record_name]["A"] = [{"c": hostvars[host]['ansible_host']}]
 
     # Generate statments
     if 'dns_facts_generate' in localhost:
