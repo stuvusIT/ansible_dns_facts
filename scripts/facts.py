@@ -377,6 +377,8 @@ if __name__ == "__main__":
         if zone in ret and 'records' in ret[zone]:
             records = ret[zone]['records']
             for host in hostvars.keys():
+                if not hostvars[host].get('dns_facts_generate_internal_record', True):
+                    continue
                 record_name = "{}.{}{}".format(host, subdomain, zone)
                 if record_name not in records:
                     records[record_name] = {}
