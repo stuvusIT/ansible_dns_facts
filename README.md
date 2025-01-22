@@ -86,13 +86,14 @@ If you don't want to use any features, you don't need to set any variables.
 
 Non-DNS servers may also set these variables:
 
-| Name                   | Default/Required | Description                                                                                                                |
-|------------------------|:----------------:|----------------------------------------------------------------------------------------------------------------------------|
-| `dns_facts_mx_my_name` |                  | Name of this server that is added to all MX records pointing to it                                                         |
-| `dns_facts_mx_prio`    | `0`              | Default priority of MX records pointing to this server                                                                     |
-| `dns_facts_mx_names`   | `[]`             | List of names pointing to this server. Each name may be a string or a dict consisting of a `name` field and a `prio` field |
-| `dns_facts_my_records` | `[]`             | List of names or CNAMES pointing to this server. See the above section for more information                                |
-| `dns_facts_spf_record` |                  | SPF record to be set on all domains with MX record                                                                         |
+| Name                                 | Default/Required | Description                                                                                                                      |
+| ------------------------------------ | :--------------: | -------------------------------------------------------------------------------------------------------------------------------- |
+| `dns_facts_generate_internal_record` |      `True`      | Whether to generate internal records. Can be set to `False` on specific hosts to exempt them from generation of internal records. |
+| `dns_facts_mx_my_name`               |                  | Name of this server that is added to all MX records pointing to it                                                               |
+| `dns_facts_mx_prio`                  |       `0`        | Default priority of MX records pointing to this server                                                                           |
+| `dns_facts_mx_names`                 |       `[]`       | List of names pointing to this server. Each name may be a string or a dict consisting of a `name` field and a `prio` field       |
+| `dns_facts_my_records`               |       `[]`       | List of names or CNAMES pointing to this server. See the above section for more information                                      |
+| `dns_facts_spf_record`               |                  | SPF record to be set on all domains with MX record                                                                               |
 
 
 ## `dns_facts_zone_clones`
